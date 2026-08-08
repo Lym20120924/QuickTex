@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <!-- 顶栏 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingTop="2dp"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/app_name"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            android:textColor="?attr/colorPrimary"
+            android:paddingStart="10dp"
+            android:paddingEnd="14dp" />
+
+        <Space
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <ImageButton
+            android:id="@+id/btn_favorite"
+            style="?attr/borderlessButtonStyle"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:src="@drawable/ic_star_outline"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:contentDescription="@string/favorite" />
+
+        <ImageButton
+            android:id="@+id/btn_history"
+            style="?attr/borderlessButtonStyle"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:src="@drawable/ic_library"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:contentDescription="@string/favorite_library" />
+
+        <ImageButton
+            android:id="@+id/btn_export"
+            style="?attr/borderlessButtonStyle"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:src="@drawable/ic_share"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:contentDescription="@string/export_png" />
+
+        <ImageButton
+            android:id="@+id/btn_about"
+            style="?attr/borderlessButtonStyle"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:src="@drawable/ic_info"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:contentDescription="@string/about" />
+    </LinearLayout>
+
+    <!-- 交互式公式画布（预览 + 编辑一体，点击可定位光标） -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1.0"
+        android:background="?android:attr/colorBackground">
+
+        <com.formulastudio.app.editor.FormulaEditorView
+            android:id="@+id/formula_editor"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+    </FrameLayout>
+
+    <!-- 公式代码框 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="?attr/colorSurfaceContainerHighest"
+        android:padding="6dp">
+
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_height="64dp"
+            android:layout_weight="1">
+
+            <EditText
+                android:id="@+id/formula_edit"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="top|start"
+                android:inputType="text|textMultiLine"
+                android:maxLines="4"
+                android:scrollbars="vertical"
+                android:textSize="15sp"
+                android:typeface="serif"
+                android:textColor="?android:attr/textColorPrimary"
+                android:background="@null"
+                android:padding="6dp" />
+
+            <!-- 居中显示的提示文字（与右侧"复制"垂直居中） -->
+            <TextView
+                android:id="@+id/hint_overlay"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:text="@string/formula_code_hint"
+                android:textSize="14sp"
+                android:textColor="?android:attr/textColorHint" />
+        </FrameLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_copy"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minWidth="56dp"
+            android:text="@string/copy" />
+    </LinearLayout>
+
+    <!-- 符号键盘 -->
+    <com.formulastudio.app.keyboard.SymbolKeyboardView
+        android:id="@+id/symbol_keyboard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/colorSurface" />
+
+</LinearLayout>

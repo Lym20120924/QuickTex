@@ -1,0 +1,20 @@
+# Gradle / Android 构建产物（不要上传）
+.gradle/
+build/
+app/build/
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+
+# IDE 配置
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# 编译日志和 APK（不传）
+build*.log
+*.apk
+QuickTex/
+QuickTex_*

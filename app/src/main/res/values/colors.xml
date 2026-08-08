@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#1565C0</color>
+    <color name="preview_background">#FFFFFF</color>
+    <color name="editor_background">#FAFAFA</color>
+    <color name="placeholder_stroke">#9E9E9E</color>
+    <color name="accent_blue">#1565C0</color>
+    <color name="chip_bg">#E8EDF2</color>
+    <color name="chip_text">#555555</color>
+</resources>

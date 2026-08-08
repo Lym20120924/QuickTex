@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">QuickTex</string>
+    <string name="library_title">公式收藏与历史</string>
+
+    <string name="copy">复制</string>
+    <string name="copied">已复制到剪贴板</string>
+    <string name="copy_failed">复制失败</string>
+    <string name="favorite">收藏</string>
+    <string name="favorite_library">收藏夹</string>
+    <string name="about">关于</string>
+    <string name="about_message">可视化 LaTeX 公式编辑器\n\nGitHub 开源地址：\nhttps://github.com/37-7/QuickTex\n\n点下方按钮复制链接</string>
+    <string name="copy_link">复制链接</string>
+    <string name="close">关闭</string>
+    <string name="favorited">已收藏</string>
+    <string name="unfavorited">已取消收藏</string>
+    <string name="history">历史</string>
+    <string name="export_png">导出图片</string>
+    <string name="undo">撤销</string>
+    <string name="redo">重做</string>
+    <string name="formula_code_hint">LaTeX 代码（可手动修改）</string>
+    <string name="preview_label">预览</string>
+    <string name="editor_label">编辑区</string>
+    <string name="tab_favorites">收藏</string>
+    <string name="tab_history">历史</string>
+    <string name="empty_favorites">还没有收藏，点编辑器顶部的 ☆ 即可收藏</string>
+    <string name="empty_history">还没有历史记录</string>
+    <string name="load">载入</string>
+    <string name="delete">删除</string>
+    <string name="clear_all">清空</string>
+    <string name="clear_confirm">确定清空当前公式吗？</string>
+    <string name="ok">确定</string>
+    <string name="cancel">取消</string>
+    <string name="exporting">正在生成图片…</string>
+    <string name="empty_formula">还没有输入公式</string>
+    <string name="export_ready">图片已生成，请选择保存位置</string>
+    <string name="export_failed">图片导出失败</string>
+    <string name="share">分享</string>
+    <string name="loading_failed">渲染引擎加载失败</string>
+    <string name="tips_title">使用提示</string>
+    <string name="tips_body">1. 点下方符号按钮插入结构，虚线框是待填位置\n2. 点虚线框或预览里对应位置即可定位输入\n3. 字母数字用手机键盘直接输入\n4. 可随时在代码框手改 LaTeX，图形会同步更新</string>
+</resources>
