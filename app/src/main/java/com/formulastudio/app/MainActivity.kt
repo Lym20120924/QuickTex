@@ -284,20 +284,19 @@ class MainActivity : AppCompatActivity() {
         }, 150)
     }
 
-    /** 导出 SVG 矢量图（离线 KaTeX 渲染） */
+    /** 导出 SVG 矢量图（复用编辑器排版，纯矢量） */
     private fun exportSvg() {
-        val latex = binding.formulaEditor.getLatex()
-        if (latex.isBlank()) {
+        if (binding.formulaEditor.getLatex().isBlank()) {
             toast(R.string.empty_formula)
             return
         }
         toast(R.string.exporting_svg)
-        SvgExporter.export(this, latex) { f ->
-            if (f != null) {
-                shareFile(f, "image/svg+xml", R.string.export_svg_ready)
-            } else {
-                toast(R.string.export_svg_failed)
-            }
+        val svg = binding.formulaEditor.renderToSvg()
+        val f = svg?.let { SvgExporter.save(this, it) }
+        if (f != null) {
+            shareFile(f, "image/svg+xml", R.string.export_svg_ready)
+        } else {
+            toast(R.string.export_svg_failed)
         }
     }
 

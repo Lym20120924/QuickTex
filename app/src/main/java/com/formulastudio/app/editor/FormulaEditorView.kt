@@ -5,7 +5,6 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.DashPathEffect
 import android.graphics.Paint
-import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.os.Build
@@ -25,6 +24,7 @@ import android.view.inputmethod.BaseInputConnection
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import com.formulastudio.app.R
+import com.google.android.material.color.MaterialColors
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -60,11 +60,13 @@ class FormulaEditorView @JvmOverloads constructor(
     private val varFont: Typeface = family(R.font.katex_math_var, Typeface.create("serif", Typeface.ITALIC))
     private val opFont: Typeface = family(R.font.katex_op, mainFont)
 
-    /** 从当前主题取颜色（支持深色模式） */
-    private fun themeColor(attr: Int, fallback: Int): Int {
-        val tv = TypedValue()
-        return if (context.theme.resolveAttribute(attr, tv, true)) tv.data else fallback
-    }
+    /**
+     * 从当前主题取颜色（支持深色模式）。
+     * 必须用 MaterialColors：Material3 里 textColorPrimary 等属性是 ColorStateList，
+     * 直接用 TypedValue.data 会拿到 0（透明），导致公式看不见。
+     */
+    private fun themeColor(attr: Int, fallback: Int): Int =
+        MaterialColors.getColor(context, attr, fallback)
 
     /** 公式“墨迹”颜色：跟随主题，深色模式下自动变浅 */
     private val inkColor: Int = themeColor(android.R.attr.textColorPrimary, Color.BLACK)
@@ -353,24 +355,22 @@ class FormulaEditorView @JvmOverloads constructor(
         (h * 0.10f).coerceAtLeast(4f * density)
 
     /** 手绘细括号，替代字体放大导致的粗括号 */
-    private fun drawBracket(canvas: Canvas, ch: String, x: Float, y: Float, h: Float) {
+    private fun drawBracket(canvas: DrawOps, ch: String, x: Float, y: Float, h: Float) {
         if (ch == "." || ch.isEmpty()) return
         val w = bracketW(h)
         when (ch) {
-            "(" -> {
-                val p = Path().apply {
-                    moveTo(x + w, y)
-                    cubicTo(x, y + h * 0.25f, x, y + h * 0.75f, x + w, y + h)
-                }
-                canvas.drawPath(p, bracketPaint)
-            }
-            ")" -> {
-                val p = Path().apply {
-                    moveTo(x, y)
-                    cubicTo(x + w, y + h * 0.25f, x + w, y + h * 0.75f, x, y + h)
-                }
-                canvas.drawPath(p, bracketPaint)
-            }
+            "(" -> canvas.drawPath(
+                listOf(
+                    PathOp.MoveTo(x + w, y),
+                    PathOp.CubicTo(x, y + h * 0.25f, x, y + h * 0.75f, x + w, y + h)
+                ), bracketPaint
+            )
+            ")" -> canvas.drawPath(
+                listOf(
+                    PathOp.MoveTo(x, y),
+                    PathOp.CubicTo(x + w, y + h * 0.25f, x + w, y + h * 0.75f, x, y + h)
+                ), bracketPaint
+            )
             "[" -> {
                 canvas.drawLine(x, y, x, y + h, bracketPaint)
                 canvas.drawLine(x, y, x + w, y, bracketPaint)
@@ -382,26 +382,24 @@ class FormulaEditorView @JvmOverloads constructor(
                 canvas.drawLine(x, y + h, x + w, y + h, bracketPaint)
             }
             "|" -> canvas.drawLine(x + w / 2f, y, x + w / 2f, y + h, bracketPaint)
-            "\\{", "{" -> {
-                val p = Path().apply {
-                    moveTo(x + w * 0.85f, y)
-                    quadTo(x, y + h * 0.14f, x, y + h * 0.42f)
-                    quadTo(x, y + h * 0.5f, x + w * 0.26f, y + h * 0.5f)
-                    quadTo(x, y + h * 0.5f, x, y + h * 0.58f)
-                    quadTo(x, y + h * 0.86f, x + w * 0.85f, y + h)
-                }
-                canvas.drawPath(p, bracketPaint)
-            }
-            "\\}", "}" -> {
-                val p = Path().apply {
-                    moveTo(x + w * 0.15f, y)
-                    quadTo(x + w, y + h * 0.14f, x + w, y + h * 0.42f)
-                    quadTo(x + w, y + h * 0.5f, x + w * 0.74f, y + h * 0.5f)
-                    quadTo(x + w, y + h * 0.5f, x + w, y + h * 0.58f)
-                    quadTo(x + w, y + h * 0.86f, x + w * 0.15f, y + h)
-                }
-                canvas.drawPath(p, bracketPaint)
-            }
+            "\\{", "{" -> canvas.drawPath(
+                listOf(
+                    PathOp.MoveTo(x + w * 0.85f, y),
+                    PathOp.QuadTo(x, y + h * 0.14f, x, y + h * 0.42f),
+                    PathOp.QuadTo(x, y + h * 0.5f, x + w * 0.26f, y + h * 0.5f),
+                    PathOp.QuadTo(x, y + h * 0.5f, x, y + h * 0.58f),
+                    PathOp.QuadTo(x, y + h * 0.86f, x + w * 0.85f, y + h)
+                ), bracketPaint
+            )
+            "\\}", "}" -> canvas.drawPath(
+                listOf(
+                    PathOp.MoveTo(x + w * 0.15f, y),
+                    PathOp.QuadTo(x + w, y + h * 0.14f, x + w, y + h * 0.42f),
+                    PathOp.QuadTo(x + w, y + h * 0.5f, x + w * 0.74f, y + h * 0.5f),
+                    PathOp.QuadTo(x + w, y + h * 0.5f, x + w, y + h * 0.58f),
+                    PathOp.QuadTo(x + w, y + h * 0.86f, x + w * 0.15f, y + h)
+                ), bracketPaint
+            )
             else -> {
                 textPaint.textSize = h * 0.85f
                 val fm = textPaint.fontMetrics
@@ -765,7 +763,7 @@ class FormulaEditorView @JvmOverloads constructor(
             for ((i, lg) in lines.withIndex()) {
                 val tmp = MathNode.Group().apply { nodes.addAll(lg) }
                 val lb = lineBoxes[i]
-                drawNode(canvas, tmp, lb, 0f, yOff)
+                drawNode(CanvasOps(canvas), tmp, lb, 0f, yOff)
                 yOff += lb.h + lineGap
             }
             // 光标
@@ -790,7 +788,7 @@ class FormulaEditorView @JvmOverloads constructor(
             canvas.restore()
             return
         }
-        drawNode(canvas, formula.root, layout, 0f, 0f)
+        drawNode(CanvasOps(canvas), formula.root, layout, 0f, 0f)
 
         // 光标所在容器高亮 + 光标
         if (hasFocus()) {
@@ -815,7 +813,7 @@ class FormulaEditorView @JvmOverloads constructor(
         canvas.restore()
     }
 
-    private fun drawNode(canvas: Canvas, n: MathNode, box: LayoutBox, x: Float, y: Float) {
+    private fun drawNode(canvas: DrawOps, n: MathNode, box: LayoutBox, x: Float, y: Float) {
         // 先画各结构节点自身的装饰
         when (n) {
             is MathNode.Fraction -> {
@@ -957,7 +955,8 @@ class FormulaEditorView @JvmOverloads constructor(
                 if (n.nodes.isEmpty()) {
                     // 占位框
                     canvas.drawRoundRect(
-                        RectF(x, y + box.baseline - ascent(box.sz), x + box.w, y + box.baseline + descent(box.sz)),
+                        x, y + box.baseline - ascent(box.sz),
+                        x + box.w, y + box.baseline + descent(box.sz),
                         3f * density, 3f * density, placeholderPaint
                     )
                 }
@@ -1329,8 +1328,33 @@ class FormulaEditorView @JvmOverloads constructor(
         val oy = (h - l.h * s) / 2f
         c.translate(ox, oy)
         c.scale(s, s)
-        drawNode(c, formula.root, l, 0f, 0f)
+        drawNode(CanvasOps(c), formula.root, l, 0f, 0f)
         return bmp
+    }
+
+    /**
+     * 把当前公式输出为 SVG（纯矢量，可无限放大）。
+     * 复用与屏幕完全相同的排版结果，所以导出效果与编辑器一致。
+     */
+    fun renderToSvg(scale: Float = 1f): String? {
+        if (formula.root.nodes.isEmpty()) return null
+        relayout()
+        val l = layoutRoot ?: return null
+        val svg = SvgOps(
+            context = context,
+            fontFamily = { p ->
+                if (p.typeface === rawPaint.typeface) "monospace"
+                else "KaTeX_Main,KaTeX_AMS,KaTeX_Size1,KaTeX_Size2,KaTeX_Size3," +
+                    "KaTeX_Size4,KaTeX_Caligraphic,KaTeX_Script,KaTeX_Fraktur," +
+                    "KaTeX_Typewriter,serif"
+            },
+            italic = { p -> p.typeface === varFont }
+        )
+        // 按 density 归一化，让 SVG 尺寸与设备无关
+        val s = scale / density
+        svg.scale(s, s)
+        drawNode(svg, formula.root, l, 0f, 0f)
+        return svg.build(l.w * s, l.h * s)
     }
 
     fun clear() {
@@ -1435,6 +1459,18 @@ class FormulaEditorView @JvmOverloads constructor(
             is SymbolAction.Prime -> {
                 pushUndo()
                 formula.insertText("′")
+                cursorAutoPlaced = false
+                relayout(); ensureCursorVisible(); invalidate(); notifyChanged()
+            }
+            is SymbolAction.NewLine -> {
+                pushUndo()
+                // 换行一律落在根层级，避免插进分数/矩阵内部
+                if (formula.cursorContainer !== formula.root) {
+                    formula.cursorContainer = formula.root
+                    formula.cursorIndex = formula.root.nodes.size
+                    formula.cursorChar = -1
+                }
+                formula.insert(MathNode.NewLine())
                 cursorAutoPlaced = false
                 relayout(); ensureCursorVisible(); invalidate(); notifyChanged()
             }
