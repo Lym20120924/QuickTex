@@ -47,7 +47,17 @@ class FormulaEditorView @JvmOverloads constructor(
     // ---------- 字体与画笔 ----------
 
     private val density = resources.displayMetrics.density
-    private val baseSize = 36f * density
+    /** 公式基准字号（会乘以用户设置的缩放倍率） */
+    private var baseSize = 36f * density
+    private var fontScale = 1f
+    /** 是否显示点阵草稿背景 */
+    private var showGrid = false
+
+    /** 点阵背景画笔 */
+    private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = 0x1F999999
+    }
 
     /** 字体族：KaTeX 各套字体通过 res/font 的 font-family XML 做字形级回退，保证全部用标准 LaTeX 字体 */
     private fun family(resId: Int, fallback: Typeface): Typeface = try {
@@ -743,6 +753,7 @@ class FormulaEditorView @JvmOverloads constructor(
 
         canvas.save()
         canvas.translate(paddingLeft - scrollX.toFloat(), paddingTop - scrollY.toFloat())
+        if (showGrid) drawGrid(canvas)
 
         if (formula.root.nodes.isEmpty()) {
             // 空公式提示
@@ -811,6 +822,44 @@ class FormulaEditorView @JvmOverloads constructor(
             }
         }
         canvas.restore()
+    }
+
+    /** 画点阵草稿背景（随内容滚动） */
+    private fun drawGrid(canvas: Canvas) {
+        val step = 0.8f * baseSize
+        if (step < 4f) return
+        val left = scrollX.toFloat() - paddingLeft
+        val top = scrollY.toFloat() - paddingTop
+        val right = left + width
+        val bottom = top + height
+        val r = (0.9f * density * (0.5f + 0.5f * fontScale)).coerceAtLeast(0.8f)
+        val offX = paddingLeft - scrollX.toFloat()
+        val offY = paddingTop - scrollY.toFloat()
+        var cy = top - floorMod(top, step)
+        while (cy < bottom) {
+            var cx = left - floorMod(left, step)
+            while (cx < right) {
+                canvas.drawCircle(cx + offX, cy + offY, r, gridPaint)
+                cx += step
+            }
+            cy += step
+        }
+    }
+
+    /** 不小于 0 的取模（用于点阵对齐） */
+    private fun floorMod(a: Float, b: Float): Float {
+        val r = a % b
+        return if (r < 0f) r + b else r
+    }
+
+    /** 应用用户设置（字号缩放 / 点阵背景） */
+    fun applySettings(fontScale: Float, showGrid: Boolean) {
+        this.fontScale = fontScale.coerceIn(0.6f, 1.8f)
+        this.showGrid = showGrid
+        baseSize = 36f * density * this.fontScale
+        gridPaint.color = (themeColor(android.R.attr.textColorSecondary, 0xFF999999.toInt()) and 0x00FFFFFF) or 0x22000000
+        relayout()
+        invalidate()
     }
 
     private fun drawNode(canvas: DrawOps, n: MathNode, box: LayoutBox, x: Float, y: Float) {

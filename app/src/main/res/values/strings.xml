@@ -93,6 +93,24 @@
     <string name="clear_favorites_confirm">确定清空所有收藏吗？</string>
     <string name="no_match">没有匹配的公式</string>
 
+    <!-- 设置 -->
+    <string name="settings">设置</string>
+    <string name="setting_font_scale">公式字号</string>
+    <string name="setting_show_code">显示 LaTeX 代码框</string>
+    <string name="setting_grid">点阵草稿背景</string>
+    <string name="setting_dark_mode">深色模式</string>
+    <string name="setting_dark_system">跟随系统</string>
+    <string name="setting_dark_light">浅色</string>
+    <string name="setting_dark_dark">深色</string>
+    <string name="setting_language">语言</string>
+    <string name="setting_lang_system">跟随系统</string>
+    <string name="setting_lang_zh">中文</string>
+    <string name="setting_lang_en">English</string>
+    <string name="setting_history_max">历史记录条数</string>
+    <string name="setting_png_scale">导出清晰度</string>
+    <string name="setting_haptic">按键震动</string>
+    <string name="share_latex">分享 LaTeX</string>
+
     <!-- 图片 / SVG 导出 -->
     <string name="copy_image">复制图片</string>
     <string name="copied_image">图片已复制到剪贴板</string>

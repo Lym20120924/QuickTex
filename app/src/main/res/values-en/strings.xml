@@ -93,6 +93,24 @@
     <string name="clear_favorites_confirm">Clear all favorites?</string>
     <string name="no_match">No matching formulas</string>
 
+    <!-- 设置 -->
+    <string name="settings">Settings</string>
+    <string name="setting_font_scale">Formula size</string>
+    <string name="setting_show_code">Show LaTeX code box</string>
+    <string name="setting_grid">Dot grid background</string>
+    <string name="setting_dark_mode">Dark mode</string>
+    <string name="setting_dark_system">Follow system</string>
+    <string name="setting_dark_light">Light</string>
+    <string name="setting_dark_dark">Dark</string>
+    <string name="setting_language">Language</string>
+    <string name="setting_lang_system">Follow system</string>
+    <string name="setting_lang_zh">中文</string>
+    <string name="setting_lang_en">English</string>
+    <string name="setting_history_max">History entries</string>
+    <string name="setting_png_scale">Export resolution</string>
+    <string name="setting_haptic">Key vibration</string>
+    <string name="share_latex">Share LaTeX</string>
+
     <!-- 图片 / SVG 导出 -->
     <string name="copy_image">Copy image</string>
     <string name="copied_image">Image copied to clipboard</string>

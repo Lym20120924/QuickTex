@@ -9,12 +9,18 @@ import android.os.Handler
 import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
+import android.view.Gravity
 import android.view.View
 import android.view.inputmethod.InputMethodManager
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.appcompat.widget.SwitchCompat
 import androidx.core.content.FileProvider
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -23,6 +29,7 @@ import com.formulastudio.app.databinding.ActivityMainBinding
 import com.formulastudio.app.editor.SymbolAction
 import com.formulastudio.app.export.PngSaver
 import com.formulastudio.app.export.SvgExporter
+import com.formulastudio.app.util.Prefs
 import com.formulastudio.app.util.Store
 import java.io.File
 
@@ -46,12 +53,15 @@ class MainActivity : AppCompatActivity() {
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        Prefs.applyDarkMode(this)
+        Prefs.applyLanguage(this)
         installCrashHandler()
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         applyWindowInsets()
+        applyPrefs()
 
         setupEditor()
         setupFormulaBox()
@@ -71,6 +81,17 @@ class MainActivity : AppCompatActivity() {
         // 保存当前公式
         val latex = binding.formulaEditor.getLatex()
         getPreferences(MODE_PRIVATE).edit().putString("formula_latex", latex).apply()
+    }
+
+    /** 应用用户设置（字号 / 点阵 / 代码框显隐） */
+    private fun applyPrefs() {
+        binding.formulaEditor.applySettings(Prefs.fontScale(this), Prefs.showGrid(this))
+        val showCode = Prefs.showCode(this)
+        binding.formulaEdit.visibility = if (showCode) View.VISIBLE else View.GONE
+        binding.hintOverlay.visibility = if (showCode) View.VISIBLE else View.GONE
+        // 代码框的容器整体隐藏，避免留下空白
+        (binding.formulaEdit.parent.parent as? View)?.visibility =
+            if (showCode) View.VISIBLE else View.GONE
     }
 
     /** 让顶部栏避开状态栏、底部键盘避开导航栏 */
@@ -191,15 +212,17 @@ class MainActivity : AppCompatActivity() {
             libraryLauncher.launch(Intent(this, LibraryActivity::class.java))
         }
         binding.btnExport.setOnClickListener { showExportMenu() }
+        binding.btnSettings.setOnClickListener { showSettings() }
         binding.btnAbout.setOnClickListener { showAbout() }
     }
 
-    /** 导出菜单：PNG / SVG / 复制图片 */
+    /** 导出菜单：PNG / SVG / 复制图片 / 分享 LaTeX */
     private fun showExportMenu() {
         val items = arrayOf(
             getString(R.string.export_png),
             getString(R.string.export_svg),
-            getString(R.string.copy_image)
+            getString(R.string.copy_image),
+            getString(R.string.share_latex)
         )
         AlertDialog.Builder(this)
             .setItems(items) { _, which ->
@@ -207,9 +230,24 @@ class MainActivity : AppCompatActivity() {
                     0 -> exportPng()
                     1 -> exportSvg()
                     2 -> copyImage()
+                    3 -> shareLatex()
                 }
             }
             .show()
+    }
+
+    /** 把 LaTeX 代码作为文本分享出去 */
+    private fun shareLatex() {
+        val latex = binding.formulaEditor.getLatex()
+        if (latex.isBlank()) {
+            toast(R.string.empty_formula)
+            return
+        }
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, latex)
+        }
+        startActivity(Intent.createChooser(intent, getString(R.string.share_latex)))
     }
 
     private fun showAbout() {
@@ -236,6 +274,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupKeyboard() {
         binding.symbolKeyboard.listener = { action ->
+            if (Prefs.haptic(this)) {
+                binding.symbolKeyboard.performHapticFeedback(
+                    android.view.HapticFeedbackConstants.VIRTUAL_KEY
+                )
+            }
             if (action == SymbolAction.ToggleIme) {
                 showIme()
             } else {
@@ -272,7 +315,7 @@ class MainActivity : AppCompatActivity() {
         }
         toast(R.string.exporting)
         uiHandler.postDelayed({
-            val bmp = binding.formulaEditor.renderToBitmap(3f)
+            val bmp = binding.formulaEditor.renderToBitmap(Prefs.pngScale(this).toFloat())
             if (bmp != null) {
                 val f = PngSaver.save(this, bmp)
                 if (f != null) {
@@ -308,7 +351,7 @@ class MainActivity : AppCompatActivity() {
         }
         toast(R.string.exporting)
         uiHandler.postDelayed({
-            val bmp = binding.formulaEditor.renderToBitmap(3f)
+            val bmp = binding.formulaEditor.renderToBitmap(Prefs.pngScale(this).toFloat())
             if (bmp == null) {
                 toast(R.string.export_failed)
                 return@postDelayed
@@ -338,6 +381,181 @@ class MainActivity : AppCompatActivity() {
         }
         startActivity(Intent.createChooser(intent, getString(titleRes)))
     }
+
+    // ---------- 设置 ----------
+
+    private var settingsDialog: AlertDialog? = null
+
+    private fun showSettings() {
+        settingsDialog?.dismiss()
+        val scroll = ScrollView(this)
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(22), dp(12), dp(22), dp(4))
+        }
+        scroll.addView(content)
+
+        // ---- 公式字号 ----
+        content.addView(settingTitle(getString(R.string.setting_font_scale)))
+        val fontVal = TextView(this).apply {
+            textSize = 15f
+            width = dp(56)
+            gravity = Gravity.CENTER
+            text = "${(Prefs.fontScale(this@MainActivity) * 100).toInt()}%"
+        }
+        val fontRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        fontRow.addView(settingButton("−") {
+            Prefs.setFontScale(this, (Prefs.fontScale(this) - 0.1f).coerceAtLeast(0.6f))
+            applyPrefs(); showSettings()
+        })
+        fontRow.addView(fontVal)
+        fontRow.addView(settingButton("＋") {
+            Prefs.setFontScale(this, (Prefs.fontScale(this) + 0.1f).coerceAtMost(1.8f))
+            applyPrefs(); showSettings()
+        })
+        content.addView(fontRow)
+
+        // ---- 开关项 ----
+        content.addView(settingSwitch(getString(R.string.setting_show_code), Prefs.showCode(this)) {
+            Prefs.setShowCode(this, it); applyPrefs(); showSettings()
+        })
+        content.addView(settingSwitch(getString(R.string.setting_grid), Prefs.showGrid(this)) {
+            Prefs.setShowGrid(this, it); applyPrefs(); showSettings()
+        })
+        content.addView(settingSwitch(getString(R.string.setting_haptic), Prefs.haptic(this)) {
+            Prefs.setHaptic(this, it); showSettings()
+        })
+
+        // ---- 深色模式 ----
+        content.addView(choiceRow(
+            getString(R.string.setting_dark_mode),
+            listOf(
+                getString(R.string.setting_dark_system) to Prefs.DARK_SYSTEM,
+                getString(R.string.setting_dark_light) to Prefs.DARK_LIGHT,
+                getString(R.string.setting_dark_dark) to Prefs.DARK_DARK
+            ),
+            Prefs.darkMode(this)
+        ) {
+            Prefs.setDarkMode(this, it)
+            AppCompatDelegate.setDefaultNightMode(
+                when (it) {
+                    Prefs.DARK_LIGHT -> AppCompatDelegate.MODE_NIGHT_NO
+                    Prefs.DARK_DARK -> AppCompatDelegate.MODE_NIGHT_YES
+                    else -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+                }
+            )
+        })
+
+        // ---- 语言 ----
+        content.addView(choiceRow(
+            getString(R.string.setting_language),
+            listOf(
+                getString(R.string.setting_lang_system) to Prefs.LANG_SYSTEM,
+                getString(R.string.setting_lang_zh) to Prefs.LANG_ZH,
+                getString(R.string.setting_lang_en) to Prefs.LANG_EN
+            ),
+            Prefs.language(this)
+        ) {
+            Prefs.setLanguage(this, it)
+            Prefs.applyLanguage(this)
+        })
+
+        // ---- 历史记录条数 ----
+        content.addView(choiceRow(
+            getString(R.string.setting_history_max),
+            listOf("20" to 20, "60" to 60, "100" to 100, "200" to 200),
+            Prefs.historyMax(this)
+        ) {
+            Prefs.setHistoryMax(this, it); showSettings()
+        })
+
+        // ---- 导出清晰度 ----
+        content.addView(choiceRow(
+            getString(R.string.setting_png_scale),
+            listOf("1x" to 1, "2x" to 2, "3x" to 3, "4x" to 4),
+            Prefs.pngScale(this)
+        ) {
+            Prefs.setPngScale(this, it); showSettings()
+        })
+
+        settingsDialog = AlertDialog.Builder(this)
+            .setTitle(R.string.settings)
+            .setView(scroll)
+            .setPositiveButton(R.string.close, null)
+            .show()
+    }
+
+    private fun settingTitle(text: String): TextView = TextView(this).apply {
+        this.text = text
+        textSize = 13f
+        setTextColor(androidx.core.content.ContextCompat.getColor(this@MainActivity, R.color.accent_blue))
+        setPadding(0, dp(14), 0, dp(2))
+    }
+
+    private fun settingSwitch(label: String, checked: Boolean, onChange: (Boolean) -> Unit): View {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(6), 0, dp(6))
+        }
+        row.addView(TextView(this).apply {
+            text = label
+            textSize = 15f
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        row.addView(SwitchCompat(this).apply {
+            isChecked = checked
+            setOnCheckedChangeListener { _, c -> onChange(c) }
+        })
+        return row
+    }
+
+    private fun settingButton(label: String, onClick: () -> Unit): TextView = TextView(this).apply {
+        text = label
+        textSize = 18f
+        gravity = Gravity.CENTER
+        setPadding(dp(14), dp(4), dp(14), dp(4))
+        background = android.graphics.drawable.ColorDrawable(0x1A000000)
+        setOnClickListener { onClick() }
+    }
+
+    /** 一行「选项」：点击弹出单选对话框 */
+    private fun <T> choiceRow(
+        title: String,
+        options: List<Pair<String, T>>,
+        current: T,
+        onPick: (T) -> Unit
+    ): View {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(8), 0, dp(8))
+        }
+        row.addView(TextView(this).apply {
+            text = title
+            textSize = 15f
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        row.addView(TextView(this).apply {
+            text = options.firstOrNull { it.second == current }?.first ?: ""
+            textSize = 14f
+            setTextColor(androidx.core.content.ContextCompat.getColor(this@MainActivity, R.color.accent_blue))
+            setPadding(dp(10), dp(4), dp(4), dp(4))
+            setOnClickListener {
+                AlertDialog.Builder(this@MainActivity)
+                    .setTitle(title)
+                    .setItems(options.map { it.first }.toTypedArray()) { _, which ->
+                        onPick(options[which].second)
+                    }
+                    .show()
+            }
+        })
+        return row
+    }
+
+    private fun dp(v: Int): Int =
+        (v * resources.displayMetrics.density).toInt()
 
     private fun toast(res: Int) = Toast.makeText(this, res, Toast.LENGTH_SHORT).show()
 }

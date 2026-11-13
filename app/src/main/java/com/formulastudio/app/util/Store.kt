@@ -68,8 +68,9 @@ object Store {
 
     fun pushHistory(c: Context, latex: String) {
         if (latex.isBlank()) return
+        val max = Prefs.historyMax(c).coerceIn(10, 500)
         val list = getHistory(c).filter { it.latex != latex }
-        val new = (listOf(Entry(latex, System.currentTimeMillis())) + list).take(HISTORY_MAX)
+        val new = (listOf(Entry(latex, System.currentTimeMillis())) + list).take(max)
         writeArray(c, KEY_HISTORY, new)
     }
 

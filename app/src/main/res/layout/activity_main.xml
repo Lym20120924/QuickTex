@@ -57,6 +57,15 @@
             android:contentDescription="@string/export_png" />
 
         <ImageButton
+            android:id="@+id/btn_settings"
+            style="?attr/borderlessButtonStyle"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:src="@drawable/ic_settings"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:contentDescription="@string/settings" />
+
+        <ImageButton
             android:id="@+id/btn_about"
             style="?attr/borderlessButtonStyle"
             android:layout_width="42dp"
