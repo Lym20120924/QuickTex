@@ -32,6 +32,13 @@ class LatexParser {
         return s.substring(start, i)
     }
 
+    /** 读环境名（字母 / 数字 / *，用于 \begin /\end） */
+    private fun readEnvName(): String {
+        val start = i
+        while (i < s.length && (s[i].isLetterOrDigit() || s[i] == '*')) i++
+        return s.substring(start, i)
+    }
+
     /** 读一个命令名（\ 之后） */
     private fun readCommandName(): String {
         val start = i
@@ -51,12 +58,18 @@ class LatexParser {
         g: MathNode.Group,
         stopAtRight: Boolean,
         stopAtEnd: Boolean,
-        envEnd: String? = null
+        envEnd: String? = null,
+        stopAtBracket: Boolean = false
     ) {
         while (i < s.length) {
             val c = s[i]
             when {
                 c == '}' -> return
+                c == ']' -> {
+                    // \sqrt[..] 的次数括号：遇到 ] 停止（不消费）
+                    if (stopAtBracket) return
+                    appendChar(g, c); i++
+                }
                 c == '{' -> {
                     // 独立花括号组：展平到当前容器
                     i++
@@ -96,8 +109,7 @@ class LatexParser {
                     val name = readName()
                     if (name == "right") {
                         if (stopAtRight) {
-                            skipWs()
-                            readDelim()
+                            // 定界符不在这里消费，交给 \left 分支读取
                             return
                         }
                         g.nodes.add(MathNode.Raw("\\right"))
@@ -107,7 +119,7 @@ class LatexParser {
                         var envName = ""
                         if (peek() == '{') {
                             i++
-                            envName = readName()
+                            envName = readEnvName()
                             skipWs()
                             if (peek() == '}') i++
                         }
@@ -245,7 +257,7 @@ class LatexParser {
                 if (peek() == '[') {
                     i++
                     val d = MathNode.Group()
-                    parseSeq(d, stopAtRight = false, stopAtEnd = false)
+                    parseSeq(d, stopAtRight = false, stopAtEnd = false, stopAtBracket = true)
                     skipWs()
                     if (peek() == ']') i++
                     degree = d
@@ -261,7 +273,7 @@ class LatexParser {
                 skipWs()
                 if (peek() == '{') {
                     i++
-                    val env = readName()
+                    val env = readEnvName()
                     skipWs()
                     if (peek() == '}') i++
                     // array 的列规格 {cc} 直接跳过
@@ -421,44 +433,31 @@ class LatexParser {
             var curRow = mutableListOf<MathNode.Group>()
             var cell = MathNode.Group()
             while (true) {
+                val start = i
                 parseSeq(cell, stopAtRight = false, stopAtEnd = true)
-                when (peek()) {
-                    '&' -> {
-                        i++
+                // parseSeq 会消费掉 \\ 行分隔符或 \end 的命令名，用消费过的内容判断是哪种
+                val consumed = s.substring(start, i)
+                when {
+                    consumed.endsWith("\\end") -> {
+                        consumeEnd(env) // 补上 {env}
                         curRow.add(cell)
-                        cell = MathNode.Group()
+                        rows.add(curRow)
+                        break
                     }
-                    '\\' -> {
+                    consumed.endsWith("\\\\") -> {
                         // 行分隔符（已消费）
                         curRow.add(cell)
                         rows.add(curRow)
                         curRow = mutableListOf()
                         cell = MathNode.Group()
-                        // 若后面紧跟 \end 由下方处理
-                        skipWs()
-                        if (peek() == '\\') {
-                            i++
-                            val n = readName()
-                            if (n == "end") {
-                                consumeEnd(env)
-                                break
-                            }
-                            i += n.length // 不应发生
-                        }
                     }
-                    '}' -> {
+                    peek() == '&' -> {
+                        i++
                         curRow.add(cell)
-                        rows.add(curRow)
-                        return
+                        cell = MathNode.Group()
                     }
                     else -> {
-                        // \end 已由 parseSeq 消费
-                        if (peek() == null) {
-                            curRow.add(cell)
-                            rows.add(curRow)
-                            return
-                        }
-                        consumeEnd(env)
+                        // } 或字符串结束
                         curRow.add(cell)
                         rows.add(curRow)
                         break
@@ -470,23 +469,22 @@ class LatexParser {
             val rows = mutableListOf<MathNode.Group>()
             var row = MathNode.Group()
             while (true) {
+                val start = i
                 parseSeq(row, stopAtRight = false, stopAtEnd = true)
-                when (peek()) {
-                    '&' -> { i++ } // 对齐符忽略
-                    '\\' -> {
+                val consumed = s.substring(start, i)
+                when {
+                    consumed.endsWith("\\end") -> {
+                        consumeEnd(env)
+                        rows.add(row)
+                        break
+                    }
+                    consumed.endsWith("\\\\") -> {
+                        // 行分隔符（已消费）
                         rows.add(row)
                         row = MathNode.Group()
-                        skipWs()
-                        if (peek() == '\\') {
-                            i++
-                            val n = readName()
-                            if (n == "end") { consumeEnd(env); break }
-                        }
                     }
-                    '}' -> { rows.add(row); return }
+                    peek() == '&' -> { i++ } // 对齐符忽略
                     else -> {
-                        if (peek() == null) { rows.add(row); return }
-                        consumeEnd(env)
                         rows.add(row)
                         break
                     }
@@ -503,7 +501,7 @@ class LatexParser {
     private fun consumeEnd(env: String) {
         skipWs()
         if (peek() == '{') i++
-        val n = readName()
+        val n = readEnvName()
         skipWs()
         if (peek() == '}') i++
     }

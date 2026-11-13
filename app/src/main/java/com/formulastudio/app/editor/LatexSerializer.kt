@@ -72,12 +72,13 @@ class LatexSerializer {
                 sb.append("}")
             }
             is MathNode.Sqrt -> {
+                sb.append("\\sqrt")
                 if (n.degree != null) {
-                    sb.append("\\sqrt[")
+                    sb.append("[")
                     cleanGroup(n.degree!!, sb)
                     sb.append("]")
                 }
-                sb.append("\\sqrt{")
+                sb.append("{")
                 cleanGroup(n.radicand, sb)
                 sb.append("}")
             }
@@ -157,12 +158,13 @@ class LatexSerializer {
                 sb.append("}")
             }
             is MathNode.Sqrt -> {
+                sb.append("\\sqrt")
                 if (n.degree != null) {
-                    sb.append("\\sqrt[")
+                    sb.append("[")
                     instGroup(n.degree!!, sb, map)
                     sb.append("]")
                 }
-                sb.append("\\sqrt{")
+                sb.append("{")
                 instGroup(n.radicand, sb, map)
                 sb.append("}")
             }
