@@ -18,3 +18,7 @@ build*.log
 *.apk
 QuickTex/
 QuickTex_*
+
+# 签名密钥（不要上传）
+keystore/
+keystore.properties
