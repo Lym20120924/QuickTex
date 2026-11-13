@@ -47,7 +47,12 @@ class LatexParser {
      * 遇到 '}' 返回（不消费）；遇到 \\right 时若 stopAtRight 则消费并返回；
      * 遇到 \\end 时若 stopAtEnd 则返回。
      */
-    private fun parseSeq(g: MathNode.Group, stopAtRight: Boolean, stopAtEnd: Boolean) {
+    private fun parseSeq(
+        g: MathNode.Group,
+        stopAtRight: Boolean,
+        stopAtEnd: Boolean,
+        envEnd: String? = null
+    ) {
         while (i < s.length) {
             val c = s[i]
             when {
@@ -55,7 +60,7 @@ class LatexParser {
                 c == '{' -> {
                     // 独立花括号组：展平到当前容器
                     i++
-                    parseSeq(g, stopAtRight = false, stopAtEnd = false)
+                    parseSeq(g, stopAtRight = false, stopAtEnd = false, envEnd = envEnd)
                     skipWs()
                     if (peek() == '}') i++
                 }
@@ -65,13 +70,28 @@ class LatexParser {
                     val arg = parseArg()
                     attachScript(g, kind, arg)
                 }
-                c == '&' -> return
+                c == '&' -> {
+                    // 透明环境（align 等）里 & 只是对齐符，直接忽略
+                    if (envEnd != null) i++ else return
+                }
                 c == '\\' -> {
                     i++
                     if (peek() == '\\') {
                         i++
                         if (stopAtRight || stopAtEnd) return
                         g.nodes.add(MathNode.NewLine()); continue
+                    }
+                    // 单字符命令：\, \; \: \! \（空格） ~
+                    val nx = peek()
+                    if (nx != null && !nx.isLetter()) {
+                        i++
+                        when (nx) {
+                            ',', ';', ':' -> g.nodes.add(MathNode.Text(" "))
+                            '!', ' ' -> { /* 负空格 / 空格：不产生节点 */ }
+                            '~' -> g.nodes.add(MathNode.Text(" "))
+                            else -> g.nodes.add(MathNode.Cmd("\\$nx"))
+                        }
+                        continue
                     }
                     val name = readName()
                     if (name == "right") {
@@ -83,7 +103,17 @@ class LatexParser {
                         g.nodes.add(MathNode.Raw("\\right"))
                     } else if (name == "end") {
                         if (stopAtEnd) return
-                        g.nodes.add(MathNode.Raw("\\end"))
+                        skipWs()
+                        var envName = ""
+                        if (peek() == '{') {
+                            i++
+                            envName = readName()
+                            skipWs()
+                            if (peek() == '}') i++
+                        }
+                        // 透明环境结束：内容已解析完毕
+                        if (envEnd != null && envName == envEnd) return
+                        // 其余 \end 一律忽略（不再显示为 Raw）
                     } else {
                         dispatchCommand(g, name)
                     }
@@ -188,6 +218,18 @@ class LatexParser {
         }
     }
 
+    /** 把 [readDelim] 的结果转成可直接显示的字符 */
+    private fun normalizeDelim(d: String): String = when (d) {
+        "\\{" -> "{"
+        "\\}" -> "}"
+        "\\|" -> "|"
+        "\\Vert" -> "‖"
+        "\\langle" -> "⟨"
+        "\\rangle" -> "⟩"
+        "." -> ""
+        else -> d
+    }
+
     // ---------- 命令分发 ----------
 
     private fun dispatchCommand(g: MathNode.Group, name: String) {
@@ -222,6 +264,21 @@ class LatexParser {
                     val env = readName()
                     skipWs()
                     if (peek() == '}') i++
+                    // array 的列规格 {cc} 直接跳过
+                    if (env == "array") {
+                        skipWs()
+                        if (peek() == '{') {
+                            i++
+                            var depth = 1
+                            while (i < s.length && depth > 0) {
+                                when (s[i]) {
+                                    '{' -> depth++
+                                    '}' -> depth--
+                                }
+                                i++
+                            }
+                        }
+                    }
                     parseEnvironment(g, env)
                 }
             }
@@ -272,10 +329,53 @@ class LatexParser {
             "det", "gcd", "arcsin", "arccos", "arctan", "sinh", "cosh", "tanh" -> {
                 g.nodes.add(MathNode.Func(name))
             }
-            "text", "mathrm", "mathbf", "mathit", "operatorname" -> {
-                // 文本/正体/斜体：直接取参数内容，保留为文本
+            "text", "mathrm", "mathbf", "mathit", "operatorname",
+            "mathbb", "mathcal", "mathfrak", "mathscr", "mathsf", "mathtt",
+            "boldsymbol", "textbf", "textnormal", "textrm" -> {
+                // 文本/字体命令：直接取参数内容，保留为文本
                 val arg = parseArg()
                 g.nodes.addAll(arg)
+            }
+            "quad", "qquad" -> g.nodes.add(MathNode.Text(" "))
+            "hspace", "vspace", "hskip", "vskip", "kern", "mkern" -> {
+                // 间距命令：长度参数直接丢弃
+                parseArg()
+            }
+            "displaystyle", "textstyle", "scriptstyle", "scriptscriptstyle",
+            "limits", "nolimits", "phantom", "hphantom", "vphantom",
+            "color", "pagecolor" -> {
+                // 样式 / 占位命令：忽略（若带参数则消费）
+                if (peek() == '{') parseArg()
+            }
+            "textcolor", "colorbox" -> {
+                parseArg() // 颜色
+                val arg = parseArg()
+                g.nodes.addAll(arg)
+            }
+            "fcolorbox" -> {
+                parseArg(); parseArg() // 框色 + 底色
+                val arg = parseArg()
+                g.nodes.addAll(arg)
+            }
+            "binom", "dbinom", "tbinom" -> {
+                val num = MathNode.Group(parseArg().toMutableList())
+                val den = MathNode.Group(parseArg().toMutableList())
+                val inner = MathNode.Group(mutableListOf<MathNode>(MathNode.Fraction(num, den)))
+                g.nodes.add(MathNode.Paren(inner, "(", ")"))
+            }
+            "boxed", "cancel", "substack", "overbrace", "underbrace",
+            "mathop", "mathrel", "mathbin", "mathord", "mathopen",
+            "mathclose", "mathpunct" -> {
+                // 取内容（装饰 / 盒子效果不绘制）
+                val arg = parseArg()
+                g.nodes.addAll(arg)
+            }
+            "big", "Big", "bigg", "Bigg", "bigl", "bigr", "Bigl", "Bigr",
+            "biggl", "biggr", "Biggl", "Biggr" -> {
+                // 放大定界符：只取符号本身
+                skipWs()
+                val d = readDelim()
+                g.nodes.add(MathNode.Text(normalizeDelim(d)))
             }
             else -> {
                 if (name in SYMBOL_COMMANDS) {
@@ -312,7 +412,8 @@ class LatexParser {
 
     // ---------- 环境（矩阵 / cases） ----------
 
-    private val MATRIX_ENVS = setOf("pmatrix", "bmatrix", "vmatrix", "matrix", "Bmatrix", "smallmatrix")
+    private val MATRIX_ENVS =
+        setOf("pmatrix", "bmatrix", "vmatrix", "matrix", "Bmatrix", "smallmatrix", "array")
 
     private fun parseEnvironment(g: MathNode.Group, env: String) {
         if (env in MATRIX_ENVS) {
@@ -365,7 +466,7 @@ class LatexParser {
                 }
             }
             g.nodes.add(MathNode.Matrix(env, rows))
-        } else if (env == "cases" || env == "aligned" || env == "array") {
+        } else if (env == "cases") {
             val rows = mutableListOf<MathNode.Group>()
             var row = MathNode.Group()
             while (true) {
@@ -393,8 +494,9 @@ class LatexParser {
             }
             g.nodes.add(MathNode.Cases(rows))
         } else {
-            // 未知环境：当普通组解析
-            g.nodes.add(MathNode.Raw("\\begin{$env}"))
+            // 透明环境（equation / align / gather / aligned 及未知环境）：
+            // 不显示 \begin / \end，内容（含 & 对齐符）由 parseSeq 继续解析
+            parseSeq(g, stopAtRight = false, stopAtEnd = false, envEnd = env)
         }
     }
 
@@ -464,6 +566,16 @@ class LatexParser {
                 "nLeftarrow", "nRightarrow", "nLeftrightarrow", "longmapsto",
                 "Longleftarrow", "Longrightarrow", "Longleftrightarrow",
                 "implies", "impliedby", "iff"
+            ))
+            // 扩展：常见关系 / 逻辑 / 几何符号（手写 LaTeX 常用）
+            addAll(listOf(
+                "nsupset", "notni", "nparallel", "nmid", "nvdash", "vdash", "models",
+                "preceq", "succeq", "npreceq", "nsucceq", "gtrapprox", "lessapprox",
+                "triangleq", "eqcirc", "circeq", "barwedge", "boxdot", "boxtimes",
+                "diamond", "bigstar", "lozenge", "blacklozenge",
+                "flat", "natural", "sharp", "measuredangle", "sphericalangle",
+                "aleph", "beth", "nsim", "simneq", "asymp", "doteqdot",
+                "lessgtr", "gtrless", "between"
             ))
         }
     }

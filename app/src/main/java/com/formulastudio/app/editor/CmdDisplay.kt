@@ -96,4 +96,19 @@ val CMD_DISPLAY: Map<String, String> = buildMap {
         "\\Longrightarrow" to "⟹", "\\Longleftrightarrow" to "⟺",
         "\\implies" to "⟹", "\\impliedby" to "⟸", "\\iff" to "⟺"
     ))
+    // 扩展符号
+    putAll(listOf(
+        "\\nsupset" to "⊅", "\\notni" to "∌", "\\nparallel" to "∦", "\\nmid" to "∤",
+        "\\nvdash" to "⊬", "\\vdash" to "⊢", "\\models" to "⊨",
+        "\\preceq" to "≼", "\\succeq" to "≽", "\\npreceq" to "⋠", "\\nsucceq" to "⋡",
+        "\\gtrapprox" to "≳", "\\lessapprox" to "≲",
+        "\\triangleq" to "≜", "\\eqcirc" to "≖", "\\circeq" to "≗",
+        "\\barwedge" to "⊼", "\\boxdot" to "⊡", "\\boxtimes" to "⊠",
+        "\\diamond" to "⋄", "\\bigstar" to "★", "\\lozenge" to "◊", "\\blacklozenge" to "⧫",
+        "\\flat" to "♭", "\\natural" to "♮", "\\sharp" to "♯",
+        "\\measuredangle" to "∡", "\\sphericalangle" to "∢",
+        "\\aleph" to "ℵ", "\\beth" to "ℶ",
+        "\\nsim" to "≁", "\\simneq" to "≆", "\\asymp" to "≍", "\\doteqdot" to "≑",
+        "\\lessgtr" to "≶", "\\gtrless" to "≷", "\\between" to "≬"
+    ))
 }
