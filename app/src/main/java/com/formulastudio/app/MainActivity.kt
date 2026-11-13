@@ -13,6 +13,7 @@ import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.core.view.ViewCompat
@@ -21,6 +22,7 @@ import androidx.core.view.WindowInsetsCompat
 import com.formulastudio.app.databinding.ActivityMainBinding
 import com.formulastudio.app.editor.SymbolAction
 import com.formulastudio.app.export.PngSaver
+import com.formulastudio.app.export.SvgExporter
 import com.formulastudio.app.util.Store
 import java.io.File
 
@@ -33,6 +35,7 @@ class MainActivity : AppCompatActivity() {
 
     private val uiHandler = Handler(Looper.getMainLooper())
     private var formulaDebounce: Runnable? = null
+    private var historyRunnable: Runnable? = null
 
     private val libraryLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -94,10 +97,10 @@ class MainActivity : AppCompatActivity() {
                 val msg = throwable.toString() + "\n\n" +
                     throwable.stackTrace.take(10).joinToString("\n") { "    at $it" }
                 runOnUiThread {
-                    androidx.appcompat.app.AlertDialog.Builder(this)
-                        .setTitle("QuickTex 遇到问题")
+                    AlertDialog.Builder(this)
+                        .setTitle(R.string.crash_title)
                         .setMessage(msg)
-                        .setPositiveButton("知道了", null)
+                        .setPositiveButton(R.string.crash_ok, null)
                         .setCancelable(false)
                         .show()
                 }
@@ -119,7 +122,17 @@ class MainActivity : AppCompatActivity() {
                 updatingFormulaBox = false
             }
             updateFavoriteIcon(latex)
+            scheduleHistory(latex)
         }
+    }
+
+    /** 记录历史：停止输入 1.5s 后写入，去重由 Store 负责 */
+    private fun scheduleHistory(latex: String) {
+        historyRunnable?.let { uiHandler.removeCallbacks(it) }
+        if (latex.isBlank()) return
+        historyRunnable = Runnable {
+            Store.pushHistory(this, latex)
+        }.also { uiHandler.postDelayed(it, 1500) }
     }
 
     // ---------- 公式代码框 ----------
@@ -177,13 +190,31 @@ class MainActivity : AppCompatActivity() {
         binding.btnHistory.setOnClickListener {
             libraryLauncher.launch(Intent(this, LibraryActivity::class.java))
         }
-        binding.btnExport.setOnClickListener { exportPng() }
+        binding.btnExport.setOnClickListener { showExportMenu() }
         binding.btnAbout.setOnClickListener { showAbout() }
     }
 
+    /** 导出菜单：PNG / SVG / 复制图片 */
+    private fun showExportMenu() {
+        val items = arrayOf(
+            getString(R.string.export_png),
+            getString(R.string.export_svg),
+            getString(R.string.copy_image)
+        )
+        AlertDialog.Builder(this)
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> exportPng()
+                    1 -> exportSvg()
+                    2 -> copyImage()
+                }
+            }
+            .show()
+    }
+
     private fun showAbout() {
-        android.app.AlertDialog.Builder(this)
-            .setTitle("QuickTex")
+        AlertDialog.Builder(this)
+            .setTitle(R.string.about)
             .setMessage(getString(R.string.about_message))
             .setPositiveButton(R.string.copy_link) { _, _ ->
                 val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -245,18 +276,68 @@ class MainActivity : AppCompatActivity() {
             if (bmp != null) {
                 val f = PngSaver.save(this, bmp)
                 if (f != null) {
-                    val uri = FileProvider.getUriForFile(this, "com.formulastudio.app.fileprovider", f)
-                    val intent = Intent(Intent.ACTION_SEND).apply {
-                        type = "image/png"
-                        putExtra(Intent.EXTRA_STREAM, uri)
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-                    startActivity(Intent.createChooser(intent, getString(R.string.share)))
+                    shareFile(f, "image/png", R.string.export_ready)
                     return@postDelayed
                 }
             }
             toast(R.string.export_failed)
         }, 150)
+    }
+
+    /** 导出 SVG 矢量图（离线 KaTeX 渲染） */
+    private fun exportSvg() {
+        val latex = binding.formulaEditor.getLatex()
+        if (latex.isBlank()) {
+            toast(R.string.empty_formula)
+            return
+        }
+        toast(R.string.exporting_svg)
+        SvgExporter.export(this, latex) { f ->
+            if (f != null) {
+                shareFile(f, "image/svg+xml", R.string.export_svg_ready)
+            } else {
+                toast(R.string.export_svg_failed)
+            }
+        }
+    }
+
+    /** 把公式渲染成 PNG 并复制到剪贴板 */
+    private fun copyImage() {
+        if (binding.formulaEditor.getLatex().isBlank()) {
+            toast(R.string.empty_formula)
+            return
+        }
+        toast(R.string.exporting)
+        uiHandler.postDelayed({
+            val bmp = binding.formulaEditor.renderToBitmap(3f)
+            if (bmp == null) {
+                toast(R.string.export_failed)
+                return@postDelayed
+            }
+            val f = PngSaver.save(this, bmp)
+            if (f == null) {
+                toast(R.string.copy_image_failed)
+                return@postDelayed
+            }
+            try {
+                val uri = FileProvider.getUriForFile(this, "com.formulastudio.app.fileprovider", f)
+                val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                cm.setPrimaryClip(ClipData.newUri(contentResolver, "formula", uri))
+                toast(R.string.copied_image)
+            } catch (e: Exception) {
+                toast(R.string.copy_image_failed)
+            }
+        }, 150)
+    }
+
+    private fun shareFile(f: File, mime: String, titleRes: Int) {
+        val uri = FileProvider.getUriForFile(this, "com.formulastudio.app.fileprovider", f)
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = mime
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(Intent.createChooser(intent, getString(titleRes)))
     }
 
     private fun toast(res: Int) = Toast.makeText(this, res, Toast.LENGTH_SHORT).show()

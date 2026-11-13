@@ -58,6 +58,10 @@ object Store {
         writeArray(c, KEY_FAVORITES, getFavorites(c).filter { it.latex != latex })
     }
 
+    fun clearFavorites(c: Context) {
+        writeArray(c, KEY_FAVORITES, emptyList())
+    }
+
     // ---------- 历史 ----------
 
     fun getHistory(c: Context): List<Entry> = readArray(c, KEY_HISTORY)
@@ -71,5 +75,9 @@ object Store {
 
     fun removeHistory(c: Context, latex: String) {
         writeArray(c, KEY_HISTORY, getHistory(c).filter { it.latex != latex })
+    }
+
+    fun clearHistory(c: Context) {
+        writeArray(c, KEY_HISTORY, emptyList())
     }
 }
