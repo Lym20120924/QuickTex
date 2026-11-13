@@ -40,6 +40,9 @@ sealed class SymbolAction {
     /** 插入化学式（\ce{...} 内容） */
     data class ChemText(val s: String) : SymbolAction()
 
+    /** 插入换行（分行公式） */
+    object NewLine : SymbolAction()
+
     object MoveLeft : SymbolAction()
     object MoveRight : SymbolAction()
     object MoveUp : SymbolAction()

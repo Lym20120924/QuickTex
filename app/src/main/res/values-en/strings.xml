@@ -79,6 +79,7 @@
     <string name="btn_tilde">Tilde</string>
     <string name="btn_widehat">Wide hat</string>
     <string name="btn_open_ime">Open system keyboard</string>
+    <string name="btn_newline">Line break</string>
 
     <!-- 收藏 / 历史库 -->
     <string name="search_hint">Search formulas…</string>

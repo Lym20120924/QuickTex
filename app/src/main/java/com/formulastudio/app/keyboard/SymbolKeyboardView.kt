@@ -85,6 +85,7 @@ class SymbolKeyboardView @JvmOverloads constructor(
         }
         toolRow.addView(toolButton("←") { listener?.invoke(SymbolAction.MoveLeft) })
         toolRow.addView(toolButton("→") { listener?.invoke(SymbolAction.MoveRight) })
+        toolRow.addView(toolButton(context.getString(R.string.btn_newline)) { listener?.invoke(SymbolAction.NewLine) })
         toolRow.addView(toolButton(context.getString(R.string.undo)) { listener?.invoke(SymbolAction.Undo) })
         toolRow.addView(toolButton(context.getString(R.string.redo)) { listener?.invoke(SymbolAction.Redo) })
         toolRow.addView(toolButton(context.getString(R.string.clear_all)) { listener?.invoke(SymbolAction.Clear) })

@@ -57,8 +57,9 @@ class LatexSerializer {
         when (n) {
             is MathNode.Group -> cleanGroup(n, sb)
             is MathNode.NewLine -> {
-                sb.append("\n")
+                // 先输出 \\ 再换行，代码框里看起来是「上一行末尾 \\」
                 sb.append("\\\\")
+                sb.append("\n")
             }
             is MathNode.Text -> sb.append(n.text)
             is MathNode.Cmd -> sb.append(n.latex)

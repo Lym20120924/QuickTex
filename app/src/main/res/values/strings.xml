@@ -79,6 +79,7 @@
     <string name="btn_tilde">波浪</string>
     <string name="btn_widehat">宽帽子</string>
     <string name="btn_open_ime">打开系统键盘</string>
+    <string name="btn_newline">换行</string>
 
     <!-- 收藏 / 历史库 -->
     <string name="search_hint">搜索公式…</string>
