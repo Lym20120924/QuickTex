@@ -60,16 +60,37 @@ class FormulaEditorView @JvmOverloads constructor(
     private val varFont: Typeface = family(R.font.katex_math_var, Typeface.create("serif", Typeface.ITALIC))
     private val opFont: Typeface = family(R.font.katex_op, mainFont)
 
-    private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = mainFont }
-    private val varPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = varFont }
-    private val opPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = opFont }
+    /** 从当前主题取颜色（支持深色模式） */
+    private fun themeColor(attr: Int, fallback: Int): Int {
+        val tv = TypedValue()
+        return if (context.theme.resolveAttribute(attr, tv, true)) tv.data else fallback
+    }
+
+    /** 公式“墨迹”颜色：跟随主题，深色模式下自动变浅 */
+    private val inkColor: Int = themeColor(android.R.attr.textColorPrimary, Color.BLACK)
+    /** 未识别命令（Raw）的提示色 */
+    private val rawColor: Int = themeColor(android.R.attr.textColorSecondary, Color.rgb(140, 90, 90))
+
+    private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        typeface = mainFont
+        color = inkColor
+    }
+    private val varPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        typeface = varFont
+        color = inkColor
+    }
+    private val opPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        typeface = opFont
+        color = inkColor
+    }
     /** 中文字体：Noto Serif（宋体风格），用于公式中的汉字与全角标点 */
     private val cjkPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         typeface = Typeface.create("serif", Typeface.NORMAL)
+        color = inkColor
     }
     /** 手绘括号（细线，替代字体放大导致的粗括号） */
     private val bracketPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.BLACK
+        color = inkColor
         style = Paint.Style.STROKE
         strokeWidth = 1.7f * density
         strokeCap = Paint.Cap.ROUND
@@ -91,19 +112,22 @@ class FormulaEditorView @JvmOverloads constructor(
         pathEffect = DashPathEffect(floatArrayOf(5f * density, 4f * density), 0f)
     }
     private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.BLACK
+        color = inkColor
         style = Paint.Style.STROKE
         strokeWidth = 1.4f * density
     }
     private val hintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.rgb(150, 150, 150)
+        color = themeColor(android.R.attr.textColorHint, Color.rgb(150, 150, 150))
         textSize = 18f * density
         textAlign = Paint.Align.CENTER
     }
-    private val accentPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = mainFont }
+    private val accentPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        typeface = mainFont
+        color = inkColor
+    }
     private val rawPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         typeface = Typeface.MONOSPACE
-        color = Color.rgb(140, 90, 90)
+        color = rawColor
     }
 
     // ---------- 布局结果 ----------
@@ -727,7 +751,7 @@ class FormulaEditorView @JvmOverloads constructor(
             canvas.restore()
             hintPaint.textAlign = Paint.Align.CENTER
             val cy = height / 2f
-            val hint = "点击下方符号开始输入"
+            val hint = context.getString(R.string.hint_start)
             canvas.drawText(hint, width / 2f, cy, hintPaint)
             return
         }
@@ -1419,6 +1443,7 @@ class FormulaEditorView @JvmOverloads constructor(
             is SymbolAction.MoveUp -> moveUp()
             is SymbolAction.MoveDown -> moveDown()
             is SymbolAction.Undo -> undo()
+            is SymbolAction.Redo -> redo()
             is SymbolAction.Backspace -> backspace()
             is SymbolAction.Clear -> clear()
             is SymbolAction.ToggleIme -> { /* 由外部处理 */ }

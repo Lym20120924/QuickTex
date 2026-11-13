@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">QuickTex</string>
+    <string name="library_title">Favorites &amp; History</string>
+    <string name="copy">Copy</string>
+    <string name="copied">Copied to clipboard</string>
+    <string name="copy_failed">Copy failed</string>
+    <string name="favorite">Favorite</string>
+    <string name="favorite_library">Library</string>
+    <string name="about">About</string>
+    <string name="about_message">Visual LaTeX formula editor\n\nGitHub:\nhttps://github.com/37-7/QuickTex\n\nTap the button below to copy the link</string>
+    <string name="copy_link">Copy link</string>
+    <string name="close">Close</string>
+    <string name="favorited">Added to favorites</string>
+    <string name="unfavorited">Removed from favorites</string>
+    <string name="history">History</string>
+    <string name="export_png">Export image</string>
+    <string name="undo">Undo</string>
+    <string name="redo">Redo</string>
+    <string name="formula_code_hint">LaTeX code (editable)</string>
+    <string name="preview_label">Preview</string>
+    <string name="editor_label">Editor</string>
+    <string name="tab_favorites">Favorites</string>
+    <string name="tab_history">History</string>
+    <string name="empty_favorites">No favorites yet — tap ☆ at the top of the editor</string>
+    <string name="empty_history">No history yet</string>
+    <string name="load">Load</string>
+    <string name="delete">Delete</string>
+    <string name="clear_all">Clear</string>
+    <string name="clear_confirm">Clear the current formula?</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="exporting">Generating image…</string>
+    <string name="empty_formula">No formula yet</string>
+    <string name="export_ready">Image generated — choose where to save</string>
+    <string name="export_failed">Image export failed</string>
+    <string name="share">Share</string>
+    <string name="loading_failed">Failed to load the rendering engine</string>
+    <string name="tips_title">Tips</string>
+    <string name="tips_body">1. Tap a symbol button to insert a structure — dashed boxes are the slots to fill\n2. Tap a dashed box (or its spot in the preview) to place the cursor\n3. Type letters and digits with your phone keyboard\n4. Edit the LaTeX in the code box anytime — canvas and preview stay in sync</string>
+
+    <!-- 崩溃提示 -->
+    <string name="crash_title">QuickTex ran into a problem</string>
+    <string name="crash_ok">Got it</string>
+
+    <!-- 编辑器空状态 -->
+    <string name="hint_start">Tap a symbol below to start</string>
+
+    <!-- 符号键盘分类 -->
+    <string name="tab_basic">Basic</string>
+    <string name="tab_sets">Sets</string>
+    <string name="tab_relations">Relations</string>
+    <string name="tab_operators">Operators</string>
+    <string name="tab_greek">Greek</string>
+    <string name="tab_analysis">Analysis</string>
+    <string name="tab_matrix">Matrix</string>
+    <string name="tab_scripts">Scripts</string>
+    <string name="tab_system_keyboard">System</string>
+
+    <!-- 符号键盘按钮 -->
+    <string name="btn_fraction">Fraction</string>
+    <string name="btn_sqrt">Root</string>
+    <string name="btn_nroot">n-th root</string>
+    <string name="btn_sum_limits">∑ with limits</string>
+    <string name="btn_prod_limits">∏ with limits</string>
+    <string name="btn_int_limits">∫ with limits</string>
+    <string name="btn_matrix2">Matrix 2×2</string>
+    <string name="btn_matrix3">Matrix 3×3</string>
+    <string name="btn_det">Determinant</string>
+    <string name="btn_cases2">Cases (2 rows)</string>
+    <string name="btn_cases3">Cases (3 rows)</string>
+    <string name="btn_sup">Superscript</string>
+    <string name="btn_sub">Subscript</string>
+    <string name="btn_supsub">Sup &amp; sub</string>
+    <string name="btn_vec">Vector</string>
+    <string name="btn_hat">Hat</string>
+    <string name="btn_bar">Bar</string>
+    <string name="btn_dot">Dot</string>
+    <string name="btn_tilde">Tilde</string>
+    <string name="btn_widehat">Wide hat</string>
+    <string name="btn_open_ime">Open system keyboard</string>
+
+    <!-- 收藏 / 历史库 -->
+    <string name="search_hint">Search formulas…</string>
+    <string name="sort">Sort</string>
+    <string name="sort_time_desc">By time (newest)</string>
+    <string name="sort_time_asc">By time (oldest)</string>
+    <string name="sort_name">By name</string>
+    <string name="clear_all_history">Clear all history</string>
+    <string name="clear_all_favorites">Clear all favorites</string>
+    <string name="clear_history_confirm">Clear all history entries?</string>
+    <string name="clear_favorites_confirm">Clear all favorites?</string>
+    <string name="no_match">No matching formulas</string>
+
+    <!-- 图片 / SVG 导出 -->
+    <string name="copy_image">Copy image</string>
+    <string name="copied_image">Image copied to clipboard</string>
+    <string name="copy_image_failed">Failed to copy image</string>
+    <string name="export_svg">Export SVG</string>
+    <string name="exporting_svg">Generating SVG…</string>
+    <string name="export_svg_ready">SVG generated — choose where to save</string>
+    <string name="export_svg_failed">SVG export failed</string>
+</resources>

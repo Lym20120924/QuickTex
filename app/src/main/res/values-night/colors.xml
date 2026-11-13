@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 深色模式下的配色（浅色值见 values/colors.xml） -->
+    <color name="preview_background">#121212</color>
+    <color name="editor_background">#1E1E1E</color>
+    <color name="placeholder_stroke">#8A8A8A</color>
+    <color name="chip_bg">#2A2A2A</color>
+    <color name="chip_text">#A8A8A8</color>
+
+    <!-- 收藏 / 历史库 -->
+    <color name="lib_text">#ECECEC</color>
+    <color name="lib_text_secondary">#9E9E9E</color>
+    <color name="lib_divider">#2A2A2A</color>
+    <color name="lib_chip_bg">#2A2A2A</color>
+    <color name="lib_chip_text">#A8A8A8</color>
+</resources>

@@ -7,4 +7,11 @@
     <color name="accent_blue">#1565C0</color>
     <color name="chip_bg">#E8EDF2</color>
     <color name="chip_text">#555555</color>
+
+    <!-- 收藏 / 历史库 -->
+    <color name="lib_text">#1E1E1E</color>
+    <color name="lib_text_secondary">#8A8A8A</color>
+    <color name="lib_divider">#E6E6E6</color>
+    <color name="lib_chip_bg">#E8EDF2</color>
+    <color name="lib_chip_text">#555555</color>
 </resources>

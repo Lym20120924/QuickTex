@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 第一版统一浅色主题（深色模式后续版本再做） -->
-    <style name="Theme.FormulaStudio" parent="Theme.Material3.Light.NoActionBar" />
+    <!-- DayNight：自动跟随系统深色模式 -->
+    <style name="Theme.FormulaStudio" parent="Theme.Material3.DayNight.NoActionBar" />
 </resources>

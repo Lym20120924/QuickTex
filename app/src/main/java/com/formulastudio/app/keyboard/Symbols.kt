@@ -1,18 +1,29 @@
 package com.formulastudio.app.keyboard
 
+import com.formulastudio.app.R
 import com.formulastudio.app.editor.SymbolAction
 
-/** 键盘按钮 */
+/**
+ * 键盘按钮。
+ * [label] 为直接显示的符号（×、∈、α 等）；需要翻译的文字用 [labelRes]。
+ */
 data class SymbolButton(
     val label: String,
     val action: SymbolAction,
     val big: Boolean = false,
     /** 占位按钮：不显示文字、不画边框，用来把每栏补满 6 列 */
-    val spacer: Boolean = false
+    val spacer: Boolean = false,
+    /** 文字标签的字符串资源（优先级高于 [label]） */
+    val labelRes: Int? = null
 )
 
 /** 键盘分类页 */
-data class SymbolTab(val name: String, val buttons: List<SymbolButton>)
+data class SymbolTab(
+    val nameRes: Int,
+    val buttons: List<SymbolButton>,
+    /** 该标签同时承担“唤出系统输入法”功能（系统键盘页） */
+    val toggleIme: Boolean = false
+)
 
 /** 把按钮列表补齐到 6 的倍数（末尾加占位），保证每行 6 个、网格线整齐 */
 fun pad6(buttons: List<SymbolButton>): List<SymbolButton> {
@@ -25,7 +36,7 @@ object Symbols {
 
     val tabs: List<SymbolTab> = listOf(
         // ---------- 基础（运算 + 括号模板，共 24 = 4×6） ----------
-        SymbolTab("基础", listOf(
+        SymbolTab(R.string.tab_basic, listOf(
             SymbolButton("+", SymbolAction.Text("+")),
             SymbolButton("−", SymbolAction.Text("-")),
             SymbolButton("×", SymbolAction.Command("\\times")),
@@ -44,16 +55,16 @@ object Symbols {
             SymbolButton("≪", SymbolAction.Command("\\ll")),
             SymbolButton("≫", SymbolAction.Command("\\gg")),
             SymbolButton("⊥", SymbolAction.Command("\\perp")),
-            SymbolButton("分式", SymbolAction.Fraction, big = true),
-            SymbolButton("根号", SymbolAction.Sqrt, big = true),
-            SymbolButton("n次根", SymbolAction.NRoot, big = true),
+            SymbolButton("", SymbolAction.Fraction, big = true, labelRes = R.string.btn_fraction),
+            SymbolButton("", SymbolAction.Sqrt, big = true, labelRes = R.string.btn_sqrt),
+            SymbolButton("", SymbolAction.NRoot, big = true, labelRes = R.string.btn_nroot),
             SymbolButton("| |", SymbolAction.Abs, big = true),
             SymbolButton("∠", SymbolAction.Command("\\angle")),
             SymbolButton("△", SymbolAction.Command("\\triangle")),
         )),
 
         // ---------- 集合（共 18 = 3×6） ----------
-        SymbolTab("集合", listOf(
+        SymbolTab(R.string.tab_sets, listOf(
             SymbolButton("∈", SymbolAction.Command("\\in")),
             SymbolButton("∋", SymbolAction.Command("\\ni")),
             SymbolButton("∉", SymbolAction.Command("\\notin")),
@@ -75,7 +86,7 @@ object Symbols {
         )),
 
         // ---------- 关系/逻辑（共 18 = 3×6） ----------
-        SymbolTab("关系", listOf(
+        SymbolTab(R.string.tab_relations, listOf(
             SymbolButton("∧", SymbolAction.Command("\\wedge")),
             SymbolButton("∨", SymbolAction.Command("\\vee")),
             SymbolButton("¬", SymbolAction.Command("\\neg")),
@@ -96,7 +107,7 @@ object Symbols {
         )),
 
         // ---------- 大型运算符（共 18 = 3×6） ----------
-        SymbolTab("大运算", listOf(
+        SymbolTab(R.string.tab_operators, listOf(
             SymbolButton("∑", SymbolAction.Command("\\sum")),
             SymbolButton("∏", SymbolAction.Command("\\prod")),
             SymbolButton("∐", SymbolAction.Command("\\coprod")),
@@ -112,16 +123,16 @@ object Symbols {
             SymbolButton("⊗", SymbolAction.Command("\\otimes")),
             SymbolButton("⨀", SymbolAction.Command("\\bigodot")),
             SymbolButton("⨂", SymbolAction.Command("\\bigotimes")),
-            SymbolButton("∑上下限", SymbolAction.SumLimits, big = true),
-            SymbolButton("∏上下限", SymbolAction.ProdLimits, big = true),
-            SymbolButton("∫上下限", SymbolAction.IntLimits, big = true),
+            SymbolButton("", SymbolAction.SumLimits, big = true, labelRes = R.string.btn_sum_limits),
+            SymbolButton("", SymbolAction.ProdLimits, big = true, labelRes = R.string.btn_prod_limits),
+            SymbolButton("", SymbolAction.IntLimits, big = true, labelRes = R.string.btn_int_limits),
         )),
 
         // ---------- 希腊字母 ----------
-        SymbolTab("希腊", greekLetters()),
+        SymbolTab(R.string.tab_greek, greekLetters()),
 
         // ---------- 分析（极限/微分/常数/集合补集，共 18 = 3×6） ----------
-        SymbolTab("分析", listOf(
+        SymbolTab(R.string.tab_analysis, listOf(
             SymbolButton("lim", SymbolAction.Lim, big = true),
             SymbolButton("log", SymbolAction.Command("\\log")),
             SymbolButton("ln", SymbolAction.Command("\\ln")),
@@ -142,34 +153,34 @@ object Symbols {
         )),
 
         // ---------- 矩阵（共 5） ----------
-        SymbolTab("矩阵", listOf(
-            SymbolButton("矩阵2×2", SymbolAction.Matrix2, big = true),
-            SymbolButton("矩阵3×3", SymbolAction.Matrix3, big = true),
-            SymbolButton("行列式", SymbolAction.Det2, big = true),
-            SymbolButton("分段(2行)", SymbolAction.Cases2, big = true),
-            SymbolButton("分段(3行)", SymbolAction.Cases3, big = true),
+        SymbolTab(R.string.tab_matrix, listOf(
+            SymbolButton("", SymbolAction.Matrix2, big = true, labelRes = R.string.btn_matrix2),
+            SymbolButton("", SymbolAction.Matrix3, big = true, labelRes = R.string.btn_matrix3),
+            SymbolButton("", SymbolAction.Det2, big = true, labelRes = R.string.btn_det),
+            SymbolButton("", SymbolAction.Cases2, big = true, labelRes = R.string.btn_cases2),
+            SymbolButton("", SymbolAction.Cases3, big = true, labelRes = R.string.btn_cases3),
         )),
 
         // ---------- 上下标·装饰（共 12 = 2×6，无重复） ----------
-        SymbolTab("上下标", listOf(
-            SymbolButton("上标", SymbolAction.Sup, big = true),
-            SymbolButton("下标", SymbolAction.Sub, big = true),
-            SymbolButton("上下标", SymbolAction.BothScripts, big = true),
+        SymbolTab(R.string.tab_scripts, listOf(
+            SymbolButton("", SymbolAction.Sup, big = true, labelRes = R.string.btn_sup),
+            SymbolButton("", SymbolAction.Sub, big = true, labelRes = R.string.btn_sub),
+            SymbolButton("", SymbolAction.BothScripts, big = true, labelRes = R.string.btn_supsub),
             SymbolButton("′", SymbolAction.Prime),
             SymbolButton("″", SymbolAction.Text("″")),
             SymbolButton("‴", SymbolAction.Text("‴")),
-            SymbolButton("向量", SymbolAction.Vec, big = true),
-            SymbolButton("帽子", SymbolAction.Hat, big = true),
-            SymbolButton("横线", SymbolAction.Bar, big = true),
-            SymbolButton("点", SymbolAction.Dot, big = true),
-            SymbolButton("波浪", SymbolAction.Tilde, big = true),
-            SymbolButton("宽帽子", SymbolAction.WideHat, big = true),
+            SymbolButton("", SymbolAction.Vec, big = true, labelRes = R.string.btn_vec),
+            SymbolButton("", SymbolAction.Hat, big = true, labelRes = R.string.btn_hat),
+            SymbolButton("", SymbolAction.Bar, big = true, labelRes = R.string.btn_bar),
+            SymbolButton("", SymbolAction.Dot, big = true, labelRes = R.string.btn_dot),
+            SymbolButton("", SymbolAction.Tilde, big = true, labelRes = R.string.btn_tilde),
+            SymbolButton("", SymbolAction.WideHat, big = true, labelRes = R.string.btn_widehat),
         )),
 
         // ---------- 系统键盘 ----------
-        SymbolTab("系统键盘", listOf(
-            SymbolButton("打开系统键盘", SymbolAction.ToggleIme, big = true),
-        )),
+        SymbolTab(R.string.tab_system_keyboard, listOf(
+            SymbolButton("", SymbolAction.ToggleIme, big = true, labelRes = R.string.btn_open_ime),
+        ), toggleIme = true),
     ).map { it.copy(buttons = pad6(it.buttons)) }
 
     private fun greekLetters(): List<SymbolButton> {

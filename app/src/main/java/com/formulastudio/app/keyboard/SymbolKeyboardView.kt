@@ -49,15 +49,15 @@ class SymbolKeyboardView @JvmOverloads constructor(
         }
         Symbols.tabs.forEachIndexed { i, tab ->
             val chip = TextView(context).apply {
-                text = tab.name
+                text = context.getString(tab.nameRes)
                 textSize = 13f
                 isAllCaps = false
                 isFocusable = false
                 gravity = Gravity.CENTER
                 setPadding(dp(14), dp(6), dp(14), dp(6))
                 setOnClickListener {
-                    // "系统键盘"标签同时承担调起系统输入法的功能
-                    if (tab.name == "系统键盘") {
+                    // “系统键盘”标签同时承担调起系统输入法的功能
+                    if (tab.toggleIme) {
                         listener?.invoke(SymbolAction.ToggleIme)
                     }
                     selectTab(i)
@@ -77,7 +77,7 @@ class SymbolKeyboardView @JvmOverloads constructor(
         gridScroll.addView(gridContainer, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         addView(gridScroll, LayoutParams(LayoutParams.MATCH_PARENT, dp(263)))
 
-        // 工具行（左右移动 / 撤销 / 清空）
+        // 工具行（左右移动 / 撤销 / 重做 / 清空）
         val toolRow = LinearLayout(context).apply {
             orientation = HORIZONTAL
             gravity = Gravity.CENTER
@@ -85,8 +85,9 @@ class SymbolKeyboardView @JvmOverloads constructor(
         }
         toolRow.addView(toolButton("←") { listener?.invoke(SymbolAction.MoveLeft) })
         toolRow.addView(toolButton("→") { listener?.invoke(SymbolAction.MoveRight) })
-        toolRow.addView(toolButton("撤销") { listener?.invoke(SymbolAction.Undo) })
-        toolRow.addView(toolButton("清空") { listener?.invoke(SymbolAction.Clear) })
+        toolRow.addView(toolButton(context.getString(R.string.undo)) { listener?.invoke(SymbolAction.Undo) })
+        toolRow.addView(toolButton(context.getString(R.string.redo)) { listener?.invoke(SymbolAction.Redo) })
+        toolRow.addView(toolButton(context.getString(R.string.clear_all)) { listener?.invoke(SymbolAction.Clear) })
         addView(toolRow)
 
         selectTab(0)
@@ -138,7 +139,7 @@ class SymbolKeyboardView @JvmOverloads constructor(
                 return@forEachIndexed
             }
             val cell = TextView(context).apply {
-                text = btn.label
+                text = btn.labelRes?.let { context.getString(it) } ?: btn.label
                 textSize = if (btn.big) 14f else 20f
                 gravity = Gravity.CENTER
                 isFocusable = false

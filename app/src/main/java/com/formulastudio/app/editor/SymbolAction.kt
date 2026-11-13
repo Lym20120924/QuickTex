@@ -45,6 +45,7 @@ sealed class SymbolAction {
     object MoveUp : SymbolAction()
     object MoveDown : SymbolAction()
     object Undo : SymbolAction()
+    object Redo : SymbolAction()
     object Backspace : SymbolAction()
     object Clear : SymbolAction()
 
