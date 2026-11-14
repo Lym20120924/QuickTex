@@ -12,8 +12,8 @@ android {
         applicationId = "com.formulastudio.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 8
-        versionName = "1.9"
+        versionCode = 9
+        versionName = "1.10"
     }
 
     signingConfigs {

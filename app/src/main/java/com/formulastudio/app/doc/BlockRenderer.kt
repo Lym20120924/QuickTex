@@ -15,27 +15,26 @@ import com.formulastudio.app.util.Prefs
 /**
  * 把文档块渲染成位图 / SVG。
  *
- * 公式优先用 **KaTeX（真 TeX 引擎，WebView）** 渲染，覆盖的 LaTeX 命令远多于自研引擎；
- * 万一失败（老设备无 WebView 等）自动回退到自研排版引擎，保证不会白屏。
+ * 公式与图形都用**自研 Canvas 引擎**渲染，不依赖 WebView，离线且快。
  */
 object BlockRenderer {
 
     private fun lightContext(context: Context): Context =
         ContextThemeWrapper(context, R.style.Theme_FormulaStudio_Light)
 
-    /** 公式位图：KaTeX 优先，失败回退自研引擎 */
-    fun mathBitmap(
-        activity: Activity,
-        latex: String,
-        inline: Boolean,
-        callback: (Bitmap?) -> Unit
-    ) {
-        KaTeXRenderer.render(activity, latex, !inline, if (inline) 30 else 34) { bmp ->
-            if (bmp != null && !isBlank(bmp)) {
-                callback(capWidth(bmp, 2400))
-            } else {
-                callback(fallbackMathBitmap(activity, latex, inline))
-            }
+    /** 公式位图：自研排版引擎（纯 Canvas，无 WebView），白底黑字 */
+    fun mathBitmap(context: Context, latex: String, inline: Boolean): Bitmap? {
+        return try {
+            val c = lightContext(context)
+            val v = FormulaEditorView(c)
+            v.applySettings(Prefs.fontScale(c), false, Color.BLACK)
+            v.loadLatex(latex.replace("&", " "))
+            val target = if (inline) 110f else 165f
+            val s = (target / v.baseSizePx()).coerceAtLeast(0.4f)
+            val bmp = v.renderToBitmap(s) ?: return null
+            capWidth(bmp, 2400)
+        } catch (e: Exception) {
+            null
         }
     }
 

@@ -75,48 +75,32 @@ class DocumentActivity : AppCompatActivity() {
             runOnUiThread {
                 val rendered = ArrayList<Item>()
                 val latex = ArrayList<String>()
-                val sync = Any()
-                var pending = 0
-                var finished = 0
-
-                fun showAll() {
-                    items.clear(); items.addAll(rendered)
-                    mathLatex.clear(); mathLatex.addAll(latex)
-                    rebuildViews()
-                    status.text = getString(
-                        R.string.document_math_count, latex.size,
-                        rendered.count { !it.isText }
-                    )
-                }
-
-                fun onOneDone() {
-                    synchronized(sync) { finished++ }
-                    if (finished == pending) showAll()
-                }
-
                 for (b in blocks) {
                     when (b.type) {
                         LatexDocument.Type.TEXT -> {
                             if (b.text.isNotBlank()) rendered.add(Item(true, b.text, null))
                         }
                         LatexDocument.Type.MATH -> {
-                            val idx = rendered.size
-                            rendered.add(Item(false, b.text, null))
                             latex.add(b.text)
-                            synchronized(sync) { pending++ }
-                            // KaTeX 是异步的（WebView），逐个渲染完成后统一刷新
-                            BlockRenderer.mathBitmap(this, b.text, b.inline) { bmp ->
-                                rendered[idx] = Item(false, b.text, bmp)
-                                onOneDone()
-                            }
+                            // 纯 Canvas 自绘引擎（无 WebView），同步渲染
+                            rendered.add(
+                                Item(false, b.text, BlockRenderer.mathBitmap(this, b.text, b.inline))
+                            )
                         }
                         LatexDocument.Type.FIGURE -> {
-                            val bmp = BlockRenderer.figureBitmap(this, b.figure, b.text)
-                            rendered.add(Item(false, b.text, bmp))
+                            rendered.add(
+                                Item(false, b.text, BlockRenderer.figureBitmap(this, b.figure, b.text))
+                            )
                         }
                     }
                 }
-                if (pending == 0) showAll()
+                items.clear(); items.addAll(rendered)
+                mathLatex.clear(); mathLatex.addAll(latex)
+                rebuildViews()
+                status.text = getString(
+                    R.string.document_math_count, latex.size,
+                    rendered.count { !it.isText }
+                )
             }
         }.start()
     }
