@@ -111,4 +111,44 @@ val CMD_DISPLAY: Map<String, String> = buildMap {
         "\\nsim" to "≁", "\\simneq" to "≆", "\\asymp" to "≍", "\\doteqdot" to "≑",
         "\\lessgtr" to "≶", "\\gtrless" to "≷", "\\between" to "≬"
     ))
+    // 扩展：定界符
+    putAll(listOf(
+        "\\lceil" to "⌈", "\\rceil" to "⌉", "\\lfloor" to "⌊", "\\rfloor" to "⌋",
+        "\\lVert" to "‖", "\\rVert" to "‖", "\\lvert" to "|", "\\rvert" to "|",
+        "\\lbrace" to "{", "\\rbrace" to "}", "\\lbrack" to "[", "\\rbrack" to "]",
+        "\\lparen" to "(", "\\rparen" to ")"
+    ))
+    // 扩展：算术 / 集合运算
+    putAll(listOf(
+        "\\sqcup" to "⊔", "\\sqcap" to "⊓", "\\dotplus" to "∔",
+        "\\oslash" to "⊘", "\\bigcirc" to "◯",
+        "\\smallsetminus" to "∖",
+        "\\leftthreetimes" to "⋋", "\\rightthreetimes" to "⋌"
+    ))
+    // 扩展：关系
+    putAll(listOf(
+        "\\curlyeqprec" to "⋞", "\\curlyeqsucc" to "⋟",
+        "\\preccurlyeq" to "≾", "\\succcurlyeq" to "≿",
+        "\\precsim" to "≾", "\\succsim" to "≿",
+        "\\Bumpeq" to "≎", "\\bumpeq" to "≏",
+        "\\risingdotseq" to "≓", "\\fallingdotseq" to "≒",
+        "\\backsimeq" to "⋍", "\\approxeq" to "≊",
+        "\\thicksim" to "∼", "\\thickapprox" to "≈",
+        "\\smallsmile" to "⌣", "\\smallfrown" to "⌢",
+        "\\trianglelefteq" to "⊴", "\\trianglerighteq" to "⊵",
+        "\\vDash" to "⊨", "\\Vdash" to "⊩", "\\dashv" to "⊣"
+    ))
+    // 扩展：几何 / 杂项
+    putAll(listOf(
+        "\\triangleleft" to "◁", "\\triangleright" to "▷",
+        "\\surd" to "√", "\\checkmark" to "✓",
+        "\\degree" to "°", "\\ohm" to "Ω",
+        "\\copyright" to "©", "\\pounds" to "£", "\\euro" to "€", "\\yen" to "¥",
+        "\\colon" to ":", "\\cdotp" to "·", "\\hslash" to "ℏ",
+        "\\clubsuit" to "♣", "\\heartsuit" to "♡", "\\spadesuit" to "♠"
+    ))
+    // 单字符命令（\% \$ \# \& \_ 等）
+    putAll(listOf(
+        "\\%" to "%", "\\$" to "$", "\\#" to "#", "\\&" to "&", "\\_" to "_"
+    ))
 }

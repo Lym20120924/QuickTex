@@ -230,6 +230,22 @@ class LatexParser {
         }
     }
 
+    /** 跳过一个配平的 {...} 或 [...] 组（用于宏定义等） */
+    private fun skipBalanced() {
+        skipWs()
+        val open = peek() ?: return
+        if (open != '{' && open != '[') return
+        val close = if (open == '{') '}' else ']'
+        i++
+        var depth = 1
+        while (i < s.length && depth > 0) {
+            val c = s[i]
+            if (c == open) depth++
+            else if (c == close) depth--
+            i++
+        }
+    }
+
     /** 把 [readDelim] 的结果转成可直接显示的字符 */
     private fun normalizeDelim(d: String): String = when (d) {
         "\\{" -> "{"
@@ -246,7 +262,7 @@ class LatexParser {
 
     private fun dispatchCommand(g: MathNode.Group, name: String) {
         when (name) {
-            "frac", "dfrac", "tfrac" -> {
+            "frac", "dfrac", "tfrac", "cfrac" -> {
                 val num = MathNode.Group(parseArg().toMutableList())
                 val den = MathNode.Group(parseArg().toMutableList())
                 g.nodes.add(MathNode.Fraction(num, den))
@@ -388,6 +404,34 @@ class LatexParser {
                 skipWs()
                 val d = readDelim()
                 g.nodes.add(MathNode.Text(normalizeDelim(d)))
+            }
+            "middle" -> {
+                // \middle| 之类的伸缩定界符
+                skipWs()
+                g.nodes.add(MathNode.Text(normalizeDelim(readDelim())))
+            }
+            "hline", "smallskip", "medskip", "bigskip", "noindent", "indent",
+            "allowbreak", "nobreak", "strut", "mathstrut" -> {
+                // 排版 / 撑高命令：忽略
+            }
+            "cline" -> { if (peek() == '{') parseArg() }
+            "multicolumn" -> { repeat(3) { if (peek() == '{') parseArg() } }
+            "genfrac" -> { repeat(5) { if (peek() == '{') skipBalanced() } }
+            "sideset", "prescript", "tensor" -> { repeat(3) { if (peek() == '{') skipBalanced() } }
+            "mathversion" -> { if (peek() == '{') skipBalanced() }
+            "newcommand", "renewcommand", "newcommand*", "renewcommand*",
+            "DeclareMathOperator", "DeclareMathOperator*",
+            "newenvironment", "renewenvironment", "def", "let" -> {
+                // 宏定义：跳过参数与定义体，不把定义体当公式内容
+                var guard = 0
+                while (guard++ < 8) {
+                    skipWs()
+                    when (peek()) {
+                        '\\' -> { i++; readName() }
+                        '{', '[' -> skipBalanced()
+                        else -> break
+                    }
+                }
             }
             else -> {
                 if (name in SYMBOL_COMMANDS) {
@@ -574,6 +618,31 @@ class LatexParser {
                 "flat", "natural", "sharp", "measuredangle", "sphericalangle",
                 "aleph", "beth", "nsim", "simneq", "asymp", "doteqdot",
                 "lessgtr", "gtrless", "between"
+            ))
+            // 扩展：定界符
+            addAll(listOf(
+                "lceil", "rceil", "lfloor", "rfloor",
+                "lVert", "rVert", "lvert", "rvert",
+                "lbrace", "rbrace", "lbrack", "rbrack", "lparen", "rparen"
+            ))
+            // 扩展：算术 / 集合运算
+            addAll(listOf(
+                "sqcup", "sqcap", "dotplus", "oslash", "bigcirc",
+                "smallsetminus", "leftthreetimes", "rightthreetimes"
+            ))
+            // 扩展：关系
+            addAll(listOf(
+                "curlyeqprec", "curlyeqsucc", "preccurlyeq", "succcurlyeq",
+                "precsim", "succsim", "Bumpeq", "bumpeq",
+                "risingdotseq", "fallingdotseq", "backsimeq", "approxeq",
+                "thicksim", "thickapprox", "smallsmile", "smallfrown",
+                "trianglelefteq", "trianglerighteq", "vDash", "Vdash", "dashv"
+            ))
+            // 扩展：几何 / 杂项
+            addAll(listOf(
+                "triangleleft", "triangleright", "surd", "checkmark",
+                "degree", "ohm", "copyright", "pounds", "euro", "yen",
+                "colon", "cdotp", "hslash", "clubsuit", "heartsuit", "spadesuit"
             ))
         }
     }

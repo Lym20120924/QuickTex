@@ -144,6 +144,40 @@ class LatexParserTest {
     }
 
     @Test
+    fun `新增命令原样保留`() {
+        listOf(
+            "\\lceil", "\\lfloor", "\\lVert", "\\lbrace", "\\rbrack",
+            "\\sqcup", "\\sqcap", "\\oslash", "\\bigcirc",
+            "\\curlyeqprec", "\\backsimeq", "\\vDash", "\\Vdash", "\\dashv",
+            "\\triangleleft", "\\surd", "\\checkmark", "\\degree",
+            "\\copyright", "\\pounds", "\\euro", "\\colon", "\\cdotp",
+            "\\clubsuit", "\\heartsuit", "\\spadesuit", "\\%", "\\$", "\\#",
+            "\\_", "\\&"
+        ).forEach { cmd ->
+            assertEquals("命令 $cmd 应原样保留", cmd, roundTrip(cmd))
+        }
+    }
+
+    @Test
+    fun `cfrac 与 middle`() {
+        assertEquals("\\frac{1}{2}", roundTrip("\\cfrac{1}{2}"))
+        assertTrue("应含定界符：${roundTrip("a\\middle|b")}", roundTrip("a\\middle|b").contains("|"))
+    }
+
+    @Test
+    fun `宏定义被跳过`() {
+        val out = roundTrip("\\newcommand{\\x}{y} z")
+        assertFalse("不应含 newcommand：$out", out.contains("newcommand"))
+        assertTrue("应保留后续内容：$out", out.contains("z"))
+    }
+
+    @Test
+    fun `表格命令被忽略`() {
+        val out = roundTrip("\\begin{matrix}1&2\\hline 3&4\\end{matrix}")
+        assertFalse("不应含 hline：$out", out.contains("hline"))
+    }
+
+    @Test
     fun `多行公式`() {
         val out = roundTrip("x=1\\\\y=2")
         assertTrue("应含换行：$out", out.contains("\\\\"))
