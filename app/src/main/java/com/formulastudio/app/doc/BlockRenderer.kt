@@ -1,5 +1,6 @@
 package com.formulastudio.app.doc
 
+import android.app.Activity
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -14,23 +15,35 @@ import com.formulastudio.app.util.Prefs
 /**
  * 把文档块渲染成位图 / SVG。
  *
- * 用固定的浅色主题创建离屏视图，保证公式「白底深字」，
- * 与 app 当前是浅色还是深色无关。
+ * 公式优先用 **KaTeX（真 TeX 引擎，WebView）** 渲染，覆盖的 LaTeX 命令远多于自研引擎；
+ * 万一失败（老设备无 WebView 等）自动回退到自研排版引擎，保证不会白屏。
  */
 object BlockRenderer {
 
     private fun lightContext(context: Context): Context =
         ContextThemeWrapper(context, R.style.Theme_FormulaStudio_Light)
 
-    /**
-     * 渲染公式。按**目标字号**换算缩放比，这样所有公式的视觉大小一致
-     * （不会像按宽度归一化那样：单字符被拉巨大、长公式被压成小点）。
-     */
-    fun mathBitmap(context: Context, latex: String, inline: Boolean = false): Bitmap? {
+    /** 公式位图：KaTeX 优先，失败回退自研引擎 */
+    fun mathBitmap(
+        activity: Activity,
+        latex: String,
+        inline: Boolean,
+        callback: (Bitmap?) -> Unit
+    ) {
+        KaTeXRenderer.render(activity, latex, !inline, if (inline) 30 else 34) { bmp ->
+            if (bmp != null && !isBlank(bmp)) {
+                callback(capWidth(bmp, 2400))
+            } else {
+                callback(fallbackMathBitmap(activity, latex, inline))
+            }
+        }
+    }
+
+    /** 回退：自研排版引擎（离屏视图） */
+    private fun fallbackMathBitmap(context: Context, latex: String, inline: Boolean): Bitmap? {
         return try {
             val c = lightContext(context)
             val v = FormulaEditorView(c)
-            // 强制黑字：离屏渲染不依赖主题解析，避免“白底白字”看起来空白
             v.applySettings(Prefs.fontScale(c), false, Color.BLACK)
             v.loadLatex(latex.replace("&", " "))
             val target = if (inline) 110f else 165f
@@ -42,6 +55,19 @@ object BlockRenderer {
         }
     }
 
+    /** 判断位图是不是一张纯白（空白）图 */
+    private fun isBlank(bmp: Bitmap): Boolean {
+        val w = bmp.width.coerceAtMost(60)
+        val h = bmp.height.coerceAtMost(60)
+        if (w <= 0 || h <= 0) return true
+        val px = IntArray(w * h)
+        bmp.getPixels(px, 0, w, 0, 0, w, h)
+        for (c in px) {
+            if (Color.red(c) < 245 || Color.green(c) < 245 || Color.blue(c) < 245) return false
+        }
+        return true
+    }
+
     /** 限制最大宽度，避免超长公式图片过大 */
     private fun capWidth(src: Bitmap, maxW: Int): Bitmap {
         if (src.width <= maxW || src.width <= 0) return src
@@ -49,17 +75,7 @@ object BlockRenderer {
         return Bitmap.createScaledBitmap(src, maxW, h, true)
     }
 
-    fun mathSvg(context: Context, latex: String): String? {
-        return try {
-            val c = lightContext(context)
-            val v = FormulaEditorView(c)
-            v.applySettings(Prefs.fontScale(c), false)
-            v.loadLatex(latex.replace("&", " "))
-            v.renderToSvg()
-        } catch (e: Exception) {
-            null
-        }
-    }
+    // ---------- 图形（TikZ / pgfplots）----------
 
     fun figureBitmap(context: Context, figure: String, src: String): Bitmap? {
         return try {
@@ -69,7 +85,7 @@ object BlockRenderer {
             val h = sz.h.toInt().coerceIn(1, 4096)
             val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bmp)
-            canvas.drawColor(android.graphics.Color.WHITE)
+            canvas.drawColor(Color.WHITE)
             if (figure == "pgfplots") FigureRenderer.pgfplots(src, CanvasOps(canvas))
             else FigureRenderer.tikz(src, CanvasOps(canvas))
             capWidth(bmp, 2400)
