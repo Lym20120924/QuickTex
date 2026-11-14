@@ -22,31 +22,31 @@ object BlockRenderer {
     private fun lightContext(context: Context): Context =
         ContextThemeWrapper(context, R.style.Theme_FormulaStudio_Light)
 
-    fun mathBitmap(context: Context, latex: String, scale: Float = 2f): Bitmap? {
+    /**
+     * 渲染公式。按**目标字号**换算缩放比，这样所有公式的视觉大小一致
+     * （不会像按宽度归一化那样：单字符被拉巨大、长公式被压成小点）。
+     */
+    fun mathBitmap(context: Context, latex: String, inline: Boolean = false): Bitmap? {
         return try {
             val c = lightContext(context)
             val v = FormulaEditorView(c)
             // 强制黑字：离屏渲染不依赖主题解析，避免“白底白字”看起来空白
             v.applySettings(Prefs.fontScale(c), false, Color.BLACK)
             v.loadLatex(latex.replace("&", " "))
-            val bmp = v.renderToBitmap(scale) ?: return null
-            normalize(bmp)
+            val target = if (inline) 110f else 165f
+            val s = (target / v.baseSizePx()).coerceAtLeast(0.4f)
+            val bmp = v.renderToBitmap(s) ?: return null
+            capWidth(bmp, 2400)
         } catch (e: Exception) {
             null
         }
     }
 
-    /** 把图片宽度归一化，避免「大的太大、小的太小」 */
-    private fun normalize(src: Bitmap, targetW: Int = 1000): Bitmap {
-        if (src.width <= 0 || src.height <= 0) return src
-        var w = targetW
-        var h = (src.height * w.toFloat() / src.width).toInt().coerceAtLeast(1)
-        if (h > 3000) {
-            h = 3000
-            w = (src.width * h.toFloat() / src.height).toInt().coerceAtLeast(1)
-        }
-        return if (w == src.width && h == src.height) src
-        else Bitmap.createScaledBitmap(src, w, h, true)
+    /** 限制最大宽度，避免超长公式图片过大 */
+    private fun capWidth(src: Bitmap, maxW: Int): Bitmap {
+        if (src.width <= maxW || src.width <= 0) return src
+        val h = (src.height * maxW.toFloat() / src.width).toInt().coerceAtLeast(1)
+        return Bitmap.createScaledBitmap(src, maxW, h, true)
     }
 
     fun mathSvg(context: Context, latex: String): String? {
@@ -72,7 +72,7 @@ object BlockRenderer {
             canvas.drawColor(android.graphics.Color.WHITE)
             if (figure == "pgfplots") FigureRenderer.pgfplots(src, CanvasOps(canvas))
             else FigureRenderer.tikz(src, CanvasOps(canvas))
-            normalize(bmp)
+            capWidth(bmp, 2400)
         } catch (e: Exception) {
             null
         }

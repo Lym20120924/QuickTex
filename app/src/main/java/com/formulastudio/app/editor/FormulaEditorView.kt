@@ -81,8 +81,29 @@ class FormulaEditorView @JvmOverloads constructor(
         return if (Color.alpha(c) == 0) fallback else c
     }
 
-    /** 公式“墨迹”颜色：跟随主题，深色模式下自动变浅 */
-    private val inkColor: Int = themeColor(android.R.attr.textColorPrimary, Color.BLACK)
+    /** 公式“墨迹”颜色：跟随主题，深色模式下自动变浅；并保证与背景有足够对比 */
+    private val inkColor: Int = resolveInk()
+
+    /** 当前基准字号（像素），供离屏渲染换算缩放比 */
+    fun baseSizePx(): Float = baseSize
+
+    private fun luminance(color: Int): Float =
+        0.299f * (Color.red(color) / 255f) +
+            0.587f * (Color.green(color) / 255f) +
+            0.114f * (Color.blue(color) / 255f)
+
+    /** 万一墨色与背景同亮/同暗（会“隐形”），强制换成对比色 */
+    private fun resolveInk(): Int {
+        val c = themeColor(android.R.attr.textColorPrimary, Color.BLACK)
+        val bg = themeColor(android.R.attr.colorBackground, Color.WHITE)
+        val inkLight = luminance(c) > 0.5f
+        val bgLight = luminance(bg) > 0.5f
+        return if (inkLight == bgLight) {
+            if (bgLight) Color.BLACK else Color.WHITE
+        } else {
+            c
+        }
+    }
     /** 未识别命令（Raw）的提示色 */
     private val rawColor: Int = themeColor(android.R.attr.textColorSecondary, Color.rgb(140, 90, 90))
 

@@ -81,7 +81,7 @@ class DocumentActivity : AppCompatActivity() {
                             if (b.text.isNotBlank()) rendered.add(Item(true, b.text, null))
                         }
                         LatexDocument.Type.MATH -> {
-                            val bmp = BlockRenderer.mathBitmap(this, b.text, 2.5f)
+                            val bmp = BlockRenderer.mathBitmap(this, b.text, b.inline)
                             latex.add(b.text)
                             rendered.add(Item(false, b.text, bmp))
                         }
