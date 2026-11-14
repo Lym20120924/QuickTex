@@ -27,6 +27,7 @@
 - SVG 导出：内置 KaTeX v0.16.22 + mhchem（离线 WebView，纯路径矢量输出）
 - 存储：SharedPreferences（收藏 / 历史）
 - 界面：Material 3 DayNight（自动跟随系统深色模式），中 / 英双语
+- 文档渲染：整份 LaTeX 文档 → 逐块渲染（公式 / TikZ 图形 / pgfplots 图表）
 - 构建：Gradle 9.7.0 / AGP 9.3.1 / Kotlin 2.3.21
 
 ## 📖 目录结构
@@ -45,8 +46,12 @@ app/src/main/java/com/formulastudio/app/
 ├── keyboard/              符号键盘（9 大分类）
 ├── export/
 │   ├── PngSaver.kt        PNG 图片导出
-│   └── SvgExporter.kt     SVG 矢量图导出（离线 KaTeX）
-└── util/Store.kt          收藏 / 历史持久化
+│   └── SvgExporter.kt     SVG 矢量图导出（真矢量，内嵌字体）
+├── doc/                   LaTeX 文档渲染
+│   ├── LatexDocument.kt   整份 .tex → 文本 / 公式 / 图形 块
+│   ├── FigureRenderer.kt  TikZ / pgfplots 渲染
+│   └── BlockRenderer.kt   块 → PNG / SVG
+└── util/                  设置 / 收藏 / 历史持久化
 app/src/main/assets/
 ├── preview.html           SVG 渲染页（离线 KaTeX + mhchem）
 └── katex/                 离线渲染引擎资源（JS / CSS / 字体）
@@ -91,6 +96,7 @@ keytool -genkeypair -v -keystore keystore/quicktex-release.jks \
 - 👆 **点哪去哪**：点虚线占位框或预览里对应位置，光标即刻定位
 - 🖼️ **导出 PNG / SVG**：PNG 3 倍清晰度；SVG 为纯路径矢量，可无限放大
 - 📋 **复制图片**：公式一键复制到剪贴板
+- 📄 **LaTeX 文档渲染**：粘贴整份 `.tex`，自动拆出公式 / 文本 / 图形并逐块渲染，支持 **TikZ** 与 **pgfplots**，可导出 PNG / SVG / 长图
 - ⭐ **收藏 & 历史**：支持搜索、按时间 / 名称排序、清空
 - 🌙 **深色模式**：跟随系统自动切换
 - 🌍 **中英双语**：跟随系统语言
