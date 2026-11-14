@@ -51,7 +51,7 @@ class DocumentActivity : AppCompatActivity() {
 
         findViewById<TextView>(R.id.doc_back).setOnClickListener { finish() }
         findViewById<TextView>(R.id.doc_render).setOnClickListener { render() }
-        findViewById<TextView>(R.id.doc_export).setOnClickListener { exportLongImage() }
+        findViewById<TextView>(R.id.doc_export).setOnClickListener { exportSvg() }
         findViewById<TextView>(R.id.doc_copy).setOnClickListener { copyAll() }
 
         if (intent?.getStringExtra("latex") != null) {
@@ -171,82 +171,105 @@ class DocumentActivity : AppCompatActivity() {
         setPadding(0, dp(6), 0, dp(6))
     }
 
-    // ---------- 导出长图 ----------
+    // ---------- 导出 SVG（真矢量） ----------
 
-    private fun exportLongImage() {
+    private fun exportSvg() {
         if (items.isEmpty()) {
             toast(R.string.document_empty)
             return
         }
-        toast(R.string.document_rendering)
         Thread {
-            val contentWidth = 900
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.BLACK
-                textSize = 26f
-                typeface = Typeface.SERIF
-            }
-            // 先算总高
-            var totalH = 0f
-            val scaled = ArrayList<Triple<Boolean, String, Bitmap?>>()
+            val margin = 24f
+            val docW = 1200f
+            data class Piece(val isText: Boolean, val text: String, val svg: String?)
+            val pieces = ArrayList<Piece>()
+            var totalH = margin
             for (it in items) {
                 if (it.isText) {
-                    val lines = wrapText(it.text, paint, contentWidth - 40f)
-                    val h = lines.size * (paint.textSize + 10f) + 18f
-                    scaled.add(Triple(true, it.text, null))
-                    totalH += h
+                    pieces.add(Piece(true, it.text, null))
+                    totalH += it.text.split("\n").size * 36f + 18f
                 } else {
-                    val bmp = it.bitmap ?: continue
-                    val s = contentWidth.toFloat() / bmp.width
-                    scaled.add(Triple(false, it.text, bmp))
-                    totalH += bmp.height * s + 18f
-                }
-            }
-            val bmp = Bitmap.createBitmap(
-                contentWidth, totalH.toInt().coerceAtLeast(1), Bitmap.Config.ARGB_8888
-            )
-            val c = Canvas(bmp)
-            c.drawColor(Color.WHITE)
-            var y = 12f
-            for (t in scaled) {
-                if (t.first) {
-                    for (line in wrapText(t.second, paint, contentWidth - 40f)) {
-                        c.drawText(line, 20f, y + paint.textSize, paint)
-                        y += paint.textSize + 10f
+                    val svg = BlockRenderer.mathSvg(this, it.text)
+                    pieces.add(Piece(false, it.text, svg))
+                    val d = svg?.let { parseSvgSize(it) }
+                    if (d != null) {
+                        val sc = ((docW - margin * 2) / d.first).coerceAtMost(1f)
+                        totalH += d.second * sc + 20f
+                    } else {
+                        totalH += 60f
                     }
-                    y += 6f
-                } else {
-                    val b = t.third ?: continue
-                    val s = contentWidth.toFloat() / b.width
-                    val h = b.height * s
-                    c.save()
-                    c.translate(0f, y)
-                    c.scale(s, s)
-                    c.drawBitmap(b, 0f, 0f, null)
-                    c.restore()
-                    y += h + 12f
                 }
             }
-            val f = File(cacheDir, "shared").apply { mkdirs() }
-                .let { File(it, "document_${System.currentTimeMillis()}.png") }
-            FileOutputStream(f).use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
+            val docH = totalH + margin
+            val sb = StringBuilder()
+            sb.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+            sb.append("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"").append(docW.toInt())
+                .append("\" height=\"").append(docH.toInt())
+                .append("\" viewBox=\"0 0 ").append(docW.toInt()).append(' ')
+                .append(docH.toInt()).append("\">\n")
+            sb.append("<rect width=\"100%\" height=\"100%\" fill=\"#FFFFFF\"/>\n")
+            var y = margin
+            for (pc in pieces) {
+                if (pc.isText) {
+                    for (line in pc.text.split("\n")) {
+                        y += 28f
+                        sb.append("<text x=\"").append(margin).append("\" y=\"").append(y)
+                            .append("\" font-family=\"serif\" font-size=\"26\" fill=\"#111111\">")
+                            .append(escapeXml(line)).append("</text>\n")
+                        y += 8f
+                    }
+                    y += 10f
+                } else {
+                    val svg = pc.svg
+                    val d = svg?.let { parseSvgSize(it) }
+                    if (d != null) {
+                        val sc = ((docW - margin * 2) / d.first).coerceAtMost(1f)
+                        val inner = svg.substring(svg.indexOf('>') + 1, svg.lastIndexOf("</svg>"))
+                        sb.append("<g transform=\"translate(").append(margin).append(',').append(y)
+                            .append(") scale(").append(sc).append(")\">").append(inner)
+                            .append("</g>\n")
+                        y += d.second * sc + 20f
+                    } else {
+                        y += 28f
+                        sb.append("<text x=\"").append(margin).append("\" y=\"").append(y)
+                            .append("\" font-family=\"serif\" font-size=\"22\" fill=\"#999999\">")
+                            .append(escapeXml(pc.text)).append("</text>\n")
+                        y += 32f
+                    }
+                }
+            }
+            sb.append("</svg>\n")
+            val dir = java.io.File(cacheDir, "shared").apply { mkdirs() }
+            val f = java.io.File(dir, "document_${System.currentTimeMillis()}.svg")
+            f.writeText(sb.toString(), Charsets.UTF_8)
             runOnUiThread {
                 try {
-                    val uri = FileProvider.getUriForFile(
+                    val uri = androidx.core.content.FileProvider.getUriForFile(
                         this, "com.formulastudio.app.fileprovider", f
                     )
-                    val i = Intent(Intent.ACTION_SEND).apply {
-                        type = "image/png"
-                        putExtra(Intent.EXTRA_STREAM, uri)
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                        type = "image/svg+xml"
+                        putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
-                    startActivity(Intent.createChooser(i, getString(R.string.document_export)))
+                    startActivity(android.content.Intent.createChooser(send, getString(R.string.document_export)))
                 } catch (e: Exception) {
                     toast(R.string.document_export_failed)
                 }
             }
         }.start()
     }
+
+    /** 从 SVG 头部取 width / height */
+    private fun parseSvgSize(svg: String): Pair<Float, Float>? {
+        val head = svg.substring(0, svg.indexOf('>') + 1)
+        val w = Regex("width=\"([0-9.]+)\"").find(head)?.groupValues?.get(1)?.toFloatOrNull()
+        val h = Regex("height=\"([0-9.]+)\"").find(head)?.groupValues?.get(1)?.toFloatOrNull()
+        return if (w != null && h != null && w > 0f && h > 0f) w to h else null
+    }
+
+    private fun escapeXml(s: String): String =
+        s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
     private fun wrapText(text: String, paint: Paint, maxW: Float): List<String> {
         val out = ArrayList<String>()

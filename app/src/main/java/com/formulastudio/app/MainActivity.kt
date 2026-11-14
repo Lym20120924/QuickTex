@@ -44,6 +44,7 @@ class MainActivity : AppCompatActivity() {
     private val uiHandler = Handler(Looper.getMainLooper())
     private var formulaDebounce: Runnable? = null
     private var historyRunnable: Runnable? = null
+    private var appliedMode = Int.MIN_VALUE
 
     private val libraryLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -63,6 +64,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         applyWindowInsets()
+        appliedMode = Prefs.displayMode(this)
         applyPrefs()
 
         setupEditor()
@@ -87,6 +89,12 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        // 显示模式可能在「外观设置」里改过，回来时立即生效
+        if (appliedMode != Prefs.displayMode(this)) {
+            appliedMode = Prefs.displayMode(this)
+            recreate()
+            return
+        }
         // 导航栏外观：悬浮底栏 / 液态玻璃
         binding.symbolKeyboard.applyChrome(
             Prefs.floatingBar(this), Prefs.liquidGlass(this)
@@ -480,26 +488,6 @@ class MainActivity : AppCompatActivity() {
         })
         content.addView(settingSwitch(getString(R.string.setting_haptic), Prefs.haptic(this)) {
             Prefs.setHaptic(this, it); showSettings()
-        })
-
-        // ---- 深色模式 ----
-        content.addView(choiceRow(
-            getString(R.string.setting_dark_mode),
-            listOf(
-                getString(R.string.setting_dark_system) to Prefs.DARK_SYSTEM,
-                getString(R.string.setting_dark_light) to Prefs.DARK_LIGHT,
-                getString(R.string.setting_dark_dark) to Prefs.DARK_DARK
-            ),
-            Prefs.darkMode(this)
-        ) {
-            Prefs.setDarkMode(this, it)
-            AppCompatDelegate.setDefaultNightMode(
-                when (it) {
-                    Prefs.DARK_LIGHT -> AppCompatDelegate.MODE_NIGHT_NO
-                    Prefs.DARK_DARK -> AppCompatDelegate.MODE_NIGHT_YES
-                    else -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
-                }
-            )
         })
 
         // ---- 语言 ----

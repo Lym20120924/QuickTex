@@ -133,7 +133,7 @@
     <string name="document_title">LaTeX document</string>
     <string name="document_input_hint">Paste LaTeX source (supports \\[ \\], $...$, align, tikz, pgfplots)</string>
     <string name="document_render">Render</string>
-    <string name="document_export">Long image</string>
+    <string name="document_export">Export SVG</string>
     <string name="document_copy_all">Copy formulas</string>
     <string name="document_copy">Copy</string>
     <string name="document_empty">Paste some LaTeX source first</string>

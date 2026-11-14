@@ -39,6 +39,19 @@ object BlockRenderer {
         }
     }
 
+    /** 公式 SVG（自研引擎，真矢量）。失败返回 null */
+    fun mathSvg(context: Context, latex: String): String? {
+        return try {
+            val c = lightContext(context)
+            val v = FormulaEditorView(c)
+            v.applySettings(Prefs.fontScale(c), false, Color.BLACK)
+            v.loadLatex(latex.replace("&", " "))
+            v.renderToSvg()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     /** 回退：自研排版引擎（离屏视图） */
     private fun fallbackMathBitmap(context: Context, latex: String, inline: Boolean): Bitmap? {
         return try {

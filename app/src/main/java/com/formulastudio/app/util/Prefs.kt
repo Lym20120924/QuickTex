@@ -126,12 +126,16 @@ object Prefs {
         AppCompatDelegate.setDefaultNightMode(mode)
     }
 
-    /** 应用「显示模式」（含纯黑深色） */
+    /** 应用「显示模式」（含纯黑深色，并兼容旧的“深色模式”设置） */
     fun applyDisplayMode(c: Context) {
         val mode = when (displayMode(c)) {
             DISPLAY_LIGHT -> AppCompatDelegate.MODE_NIGHT_NO
             DISPLAY_DARK, DISPLAY_AMOLED -> AppCompatDelegate.MODE_NIGHT_YES
-            else -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+            else -> when (darkMode(c)) {   // 兼容旧设置
+                DARK_LIGHT -> AppCompatDelegate.MODE_NIGHT_NO
+                DARK_DARK -> AppCompatDelegate.MODE_NIGHT_YES
+                else -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+            }
         }
         AppCompatDelegate.setDefaultNightMode(mode)
     }
