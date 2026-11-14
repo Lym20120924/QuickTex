@@ -208,7 +208,7 @@ class DocumentActivity : AppCompatActivity() {
                     val d = svg?.let { parseSvgSize(it) }
                     if (d != null) {
                         val sc = ((docW - margin * 2) / d.first).coerceAtMost(1f)
-                        val inner = svg.substring(svg.indexOf('>') + 1, svg.lastIndexOf("</svg>"))
+                        val inner = svgInner(svg)
                         sb.append("<g transform=\"translate(").append(margin).append(',').append(y)
                             .append(") scale(").append(sc).append(")\">").append(inner)
                             .append("</g>\n")
@@ -244,12 +244,20 @@ class DocumentActivity : AppCompatActivity() {
         }.start()
     }
 
-    /** 从 SVG 头部取 width / height */
+    /** 从 <svg ...> 标签取 width / height（注意别把 <?xml ?> 当成头部） */
     private fun parseSvgSize(svg: String): Pair<Float, Float>? {
-        val head = svg.substring(0, svg.indexOf('>') + 1)
-        val w = Regex("width=\"([0-9.]+)\"").find(head)?.groupValues?.get(1)?.toFloatOrNull()
-        val h = Regex("height=\"([0-9.]+)\"").find(head)?.groupValues?.get(1)?.toFloatOrNull()
+        val m = Regex("<svg[^>]*>").find(svg) ?: return null
+        val w = Regex("width=\"([0-9.]+)\"").find(m.value)?.groupValues?.get(1)?.toFloatOrNull()
+        val h = Regex("height=\"([0-9.]+)\"").find(m.value)?.groupValues?.get(1)?.toFloatOrNull()
         return if (w != null && h != null && w > 0f && h > 0f) w to h else null
+    }
+
+    /** 取出 <svg> 标签之后、</svg> 之前的内部内容 */
+    private fun svgInner(svg: String): String {
+        val m = Regex("<svg[^>]*>").find(svg) ?: return svg
+        val start = m.range.last + 1
+        val end = svg.lastIndexOf("</svg>").coerceAtLeast(start)
+        return svg.substring(start, end)
     }
 
     private fun escapeXml(s: String): String =
