@@ -37,7 +37,7 @@ class SymbolKeyboardView @JvmOverloads constructor(
     private val gridContainer: LinearLayout
     private val gridScroll: ScrollView
 
-    private val primaryColor: Int = Prefs.accentColor(context)
+    private var primaryColor: Int = Prefs.accentColor(context)
     private val onPrimaryColor: Int = android.graphics.Color.WHITE
     private val surfaceVariantColor: Int = ContextCompat.getColor(context, R.color.chip_bg)
     private val onSurfaceVariantColor: Int = ContextCompat.getColor(context, R.color.chip_text)
@@ -203,6 +203,9 @@ class SymbolKeyboardView @JvmOverloads constructor(
             background = ColorDrawable(surfaceColor())
             elevation = 0f
         }
+        // 主题色可能刚在设置里改过，这里刷新
+        primaryColor = Prefs.accentColor(context)
+        selectTab(currentTab)
         if (liquid) applyLiquidGlass() else setLayerType(View.LAYER_TYPE_NONE, null)
     }
 

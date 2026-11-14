@@ -49,10 +49,10 @@ class AppearanceActivity : AppCompatActivity() {
         // 1. 界面风格
         section(R.string.section_theme_style)
         radioRow(R.string.style_material, null, Prefs.themeStyle(this) == Prefs.STYLE_MATERIAL) {
-            Prefs.setThemeStyle(this, Prefs.STYLE_MATERIAL); rebuild()
+            Prefs.setThemeStyle(this, Prefs.STYLE_MATERIAL); recreate()
         }
         radioRow(R.string.style_miuix, null, Prefs.themeStyle(this) == Prefs.STYLE_MIUIX) {
-            Prefs.setThemeStyle(this, Prefs.STYLE_MIUIX); rebuild()
+            Prefs.setThemeStyle(this, Prefs.STYLE_MIUIX); recreate()
         }
 
         // 2. 导航栏
@@ -110,19 +110,19 @@ class AppearanceActivity : AppCompatActivity() {
         // 4. 显示模式
         section(R.string.section_display)
         radioRow(R.string.display_system, null, Prefs.displayMode(this) == Prefs.DISPLAY_SYSTEM) {
-            Prefs.setDisplayMode(this, Prefs.DISPLAY_SYSTEM); applyDisplay(); rebuild()
+            Prefs.setDisplayMode(this, Prefs.DISPLAY_SYSTEM); applyDisplay(); recreate()
         }
         radioRow(R.string.display_light, null, Prefs.displayMode(this) == Prefs.DISPLAY_LIGHT) {
-            Prefs.setDisplayMode(this, Prefs.DISPLAY_LIGHT); applyDisplay(); rebuild()
+            Prefs.setDisplayMode(this, Prefs.DISPLAY_LIGHT); applyDisplay(); recreate()
         }
         radioRow(R.string.display_dark, null, Prefs.displayMode(this) == Prefs.DISPLAY_DARK) {
-            Prefs.setDisplayMode(this, Prefs.DISPLAY_DARK); applyDisplay(); rebuild()
+            Prefs.setDisplayMode(this, Prefs.DISPLAY_DARK); applyDisplay(); recreate()
         }
         radioRow(
             R.string.display_amoled, R.string.display_amoled_desc,
             Prefs.displayMode(this) == Prefs.DISPLAY_AMOLED
         ) {
-            Prefs.setDisplayMode(this, Prefs.DISPLAY_AMOLED); applyDisplay(); rebuild()
+            Prefs.setDisplayMode(this, Prefs.DISPLAY_AMOLED); applyDisplay(); recreate()
         }
 
         // 5. 启动画面与图标

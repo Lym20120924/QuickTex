@@ -855,12 +855,27 @@ class FormulaEditorView @JvmOverloads constructor(
         return if (r < 0f) r + b else r
     }
 
-    /** 应用用户设置（字号缩放 / 点阵背景） */
-    fun applySettings(fontScale: Float, showGrid: Boolean) {
+    /** 强制墨色（离屏渲染用，保证白底深字） */
+    private var inkOverride: Int? = null
+
+    private fun recolor() {
+        val c = inkOverride ?: inkColor
+        textPaint.color = c
+        varPaint.color = c
+        opPaint.color = c
+        cjkPaint.color = c
+        accentPaint.color = c
+        rawPaint.color = inkOverride?.let { (it and 0x00FFFFFF) or 0x66000000 } ?: rawColor
+    }
+
+    /** 应用用户设置（字号缩放 / 点阵背景 / 可选墨色） */
+    fun applySettings(fontScale: Float, showGrid: Boolean, ink: Int? = null) {
         this.fontScale = fontScale.coerceIn(0.6f, 1.8f)
         this.showGrid = showGrid
+        this.inkOverride = ink
         baseSize = 36f * density * this.fontScale
         gridPaint.color = (themeColor(android.R.attr.textColorSecondary, 0xFF999999.toInt()) and 0x00FFFFFF) or 0x22000000
+        recolor()
         relayout()
         invalidate()
     }

@@ -3,6 +3,7 @@ package com.formulastudio.app.doc
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.view.ContextThemeWrapper
 import com.formulastudio.app.R
 import com.formulastudio.app.editor.CanvasOps
@@ -25,12 +26,27 @@ object BlockRenderer {
         return try {
             val c = lightContext(context)
             val v = FormulaEditorView(c)
-            v.applySettings(Prefs.fontScale(c), false)
+            // 强制黑字：离屏渲染不依赖主题解析，避免“白底白字”看起来空白
+            v.applySettings(Prefs.fontScale(c), false, Color.BLACK)
             v.loadLatex(latex.replace("&", " "))
-            v.renderToBitmap(scale)
+            val bmp = v.renderToBitmap(scale) ?: return null
+            normalize(bmp)
         } catch (e: Exception) {
             null
         }
+    }
+
+    /** 把图片宽度归一化，避免「大的太大、小的太小」 */
+    private fun normalize(src: Bitmap, targetW: Int = 1000): Bitmap {
+        if (src.width <= 0 || src.height <= 0) return src
+        var w = targetW
+        var h = (src.height * w.toFloat() / src.width).toInt().coerceAtLeast(1)
+        if (h > 3000) {
+            h = 3000
+            w = (src.width * h.toFloat() / src.height).toInt().coerceAtLeast(1)
+        }
+        return if (w == src.width && h == src.height) src
+        else Bitmap.createScaledBitmap(src, w, h, true)
     }
 
     fun mathSvg(context: Context, latex: String): String? {
@@ -56,7 +72,7 @@ object BlockRenderer {
             canvas.drawColor(android.graphics.Color.WHITE)
             if (figure == "pgfplots") FigureRenderer.pgfplots(src, CanvasOps(canvas))
             else FigureRenderer.tikz(src, CanvasOps(canvas))
-            bmp
+            normalize(bmp)
         } catch (e: Exception) {
             null
         }
