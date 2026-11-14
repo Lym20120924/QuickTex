@@ -212,6 +212,9 @@ class MainActivity : AppCompatActivity() {
             libraryLauncher.launch(Intent(this, LibraryActivity::class.java))
         }
         binding.btnExport.setOnClickListener { showExportMenu() }
+        binding.btnDoc.setOnClickListener {
+            startActivity(Intent(this, DocumentActivity::class.java))
+        }
         binding.btnSettings.setOnClickListener { showSettings() }
         binding.btnAbout.setOnClickListener { showAbout() }
     }

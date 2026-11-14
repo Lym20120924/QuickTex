@@ -2,4 +2,7 @@
 <resources>
     <!-- DayNight：自动跟随系统深色模式 -->
     <style name="Theme.FormulaStudio" parent="Theme.Material3.DayNight.NoActionBar" />
+
+    <!-- 固定浅色：用于文档 / 公式渲染（保证白底深字） -->
+    <style name="Theme.FormulaStudio.Light" parent="Theme.Material3.Light.NoActionBar" />
 </resources>

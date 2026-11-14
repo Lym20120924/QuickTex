@@ -24,6 +24,12 @@
             android:exported="false"
             android:label="@string/library_title" />
 
+        <activity
+            android:name=".DocumentActivity"
+            android:exported="false"
+            android:label="@string/document_title"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="com.formulastudio.app.fileprovider"

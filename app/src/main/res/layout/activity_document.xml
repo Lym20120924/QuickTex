@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <!-- 顶栏 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp">
+
+        <TextView
+            android:id="@+id/doc_back"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="←"
+            android:textSize="20sp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/document_title"
+            android:textSize="17sp"
+            android:maxWidth="120dp"
+            android:ellipsize="end"
+            android:paddingStart="2dp"
+            android:paddingEnd="8dp" />
+
+        <TextView
+            android:id="@+id/doc_render"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/document_render"
+            android:textSize="14sp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp" />
+
+        <TextView
+            android:id="@+id/doc_export"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/document_export"
+            android:textSize="14sp"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp" />
+
+        <TextView
+            android:id="@+id/doc_copy"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/document_copy_all"
+            android:textSize="14sp"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp" />
+    </LinearLayout>
+
+    <EditText
+        android:id="@+id/doc_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="160dp"
+        android:gravity="top|start"
+        android:inputType="textMultiLine|textNoSuggestions"
+        android:typeface="monospace"
+        android:textSize="13sp"
+        android:hint="@string/document_input_hint"
+        android:padding="10dp"
+        android:background="?attr/colorSurfaceContainerHighest" />
+
+    <TextView
+        android:id="@+id/doc_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="12sp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:id="@+id/doc_list"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="10dp" />
+    </ScrollView>
+</LinearLayout>

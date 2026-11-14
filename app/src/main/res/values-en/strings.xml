@@ -93,6 +93,20 @@
     <string name="clear_favorites_confirm">Clear all favorites?</string>
     <string name="no_match">No matching formulas</string>
 
+    <!-- LaTeX 文档渲染 -->
+    <string name="document_title">LaTeX document</string>
+    <string name="document_input_hint">Paste LaTeX source (supports \\[ \\], $...$, align, tikz, pgfplots)</string>
+    <string name="document_render">Render</string>
+    <string name="document_export">Long image</string>
+    <string name="document_copy_all">Copy formulas</string>
+    <string name="document_copy">Copy</string>
+    <string name="document_empty">Paste some LaTeX source first</string>
+    <string name="document_rendering">Rendering…</string>
+    <string name="document_render_failed">Failed to render this block</string>
+    <string name="document_export_failed">Export failed</string>
+    <string name="document_copy_done">Copied %1$d formulas</string>
+    <string name="document_math_count">%1$d formulas · %2$d figures</string>
+
     <!-- 设置 -->
     <string name="settings">Settings</string>
     <string name="setting_font_scale">Formula size</string>
