@@ -93,6 +93,42 @@
     <string name="clear_favorites_confirm">Clear all favorites?</string>
     <string name="no_match">No matching formulas</string>
 
+    <!-- 外观设置 -->
+    <string name="appearance_title">Appearance</string>
+    <string name="section_theme_style">Theme style</string>
+    <string name="style_material">Material 3</string>
+    <string name="style_miuix">MIUIX</string>
+    <string name="section_nav_bar">Navigation bar</string>
+    <string name="nav_floating">Floating bar</string>
+    <string name="nav_floating_desc">Bottom bar floats with rounded corners and shadow</string>
+    <string name="nav_liquid">Liquid glass</string>
+    <string name="nav_liquid_desc">Background blur (frosted glass)</string>
+    <string name="section_color">Color scheme</string>
+    <string name="color_wallpaper">Wallpaper color</string>
+    <string name="color_wallpaper_status">Dynamic · Follow system</string>
+    <string name="color_dynamic">Dynamic color</string>
+    <string name="color_dynamic_desc">Extract colors from the system wallpaper</string>
+    <string name="color_picker">Accent color</string>
+    <string name="color_picker_disabled">Unavailable while dynamic color is on</string>
+    <string name="color_add">Add custom color</string>
+    <string name="color_default">Default</string>
+    <string name="color_style">Color style</string>
+    <string name="color_style_dynamic">Dynamic</string>
+    <string name="color_style_classic">Classic</string>
+    <string name="color_style_fresh">Fresh</string>
+    <string name="color_style_deep">Deep</string>
+    <string name="color_contrast">Contrast</string>
+    <string name="color_content">Content color</string>
+    <string name="section_display">Display mode</string>
+    <string name="display_system">Follow system</string>
+    <string name="display_light">Light</string>
+    <string name="display_dark">Dark</string>
+    <string name="display_amoled">Pure black</string>
+    <string name="display_amoled_desc">Pure black background, saves power on AMOLED</string>
+    <string name="section_splash">Splash &amp; icon</string>
+    <string name="splash_theme">Splash follows theme</string>
+    <string name="icon_theme">Launcher icon follows theme</string>
+
     <!-- LaTeX 文档渲染 -->
     <string name="document_title">LaTeX document</string>
     <string name="document_input_hint">Paste LaTeX source (supports \\[ \\], $...$, align, tikz, pgfplots)</string>

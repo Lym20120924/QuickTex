@@ -53,7 +53,8 @@ class MainActivity : AppCompatActivity() {
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        Prefs.applyDarkMode(this)
+        Prefs.applyDisplayMode(this)
+        setTheme(Prefs.themeRes(this))
         Prefs.applyLanguage(this)
         installCrashHandler()
         super.onCreate(savedInstanceState)
@@ -81,6 +82,14 @@ class MainActivity : AppCompatActivity() {
         // 保存当前公式
         val latex = binding.formulaEditor.getLatex()
         getPreferences(MODE_PRIVATE).edit().putString("formula_latex", latex).apply()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // 导航栏外观：悬浮底栏 / 液态玻璃
+        binding.symbolKeyboard.applyChrome(
+            Prefs.floatingBar(this), Prefs.liquidGlass(this)
+        )
     }
 
     /** 应用用户设置（字号 / 点阵 / 代码框显隐） */
@@ -397,6 +406,17 @@ class MainActivity : AppCompatActivity() {
             setPadding(dp(22), dp(12), dp(22), dp(4))
         }
         scroll.addView(content)
+
+        // ---- 外观设置入口 ----
+        content.addView(TextView(this).apply {
+            text = getString(R.string.appearance_title)
+            textSize = 15f
+            setTextColor(Prefs.accentColor(this@MainActivity))
+            setPadding(dp(12), dp(12), dp(6), dp(8))
+            setOnClickListener {
+                startActivity(Intent(this@MainActivity, AppearanceActivity::class.java))
+            }
+        })
 
         // ---- 公式字号 ----
         content.addView(settingTitle(getString(R.string.setting_font_scale)))

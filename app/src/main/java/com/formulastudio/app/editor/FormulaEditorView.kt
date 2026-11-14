@@ -75,8 +75,11 @@ class FormulaEditorView @JvmOverloads constructor(
      * 必须用 MaterialColors：Material3 里 textColorPrimary 等属性是 ColorStateList，
      * 直接用 TypedValue.data 会拿到 0（透明），导致公式看不见。
      */
-    private fun themeColor(attr: Int, fallback: Int): Int =
-        MaterialColors.getColor(context, attr, fallback)
+    private fun themeColor(attr: Int, fallback: Int): Int {
+        val c = MaterialColors.getColor(context, attr, fallback)
+        // 万一解析出全透明色，公式会“看不见”，这里兜底
+        return if (Color.alpha(c) == 0) fallback else c
+    }
 
     /** 公式“墨迹”颜色：跟随主题，深色模式下自动变浅 */
     private val inkColor: Int = themeColor(android.R.attr.textColorPrimary, Color.BLACK)

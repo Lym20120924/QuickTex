@@ -5,4 +5,28 @@
 
     <!-- 固定浅色：用于文档 / 公式渲染（保证白底深字） -->
     <style name="Theme.FormulaStudio.Light" parent="Theme.Material3.Light.NoActionBar" />
+
+    <!-- MIUIX 风格：更明亮的蓝、更大的圆角观感 -->
+    <style name="Theme.FormulaStudio.Miui" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">#3482FF</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorPrimaryContainer">#D8E7FF</item>
+        <item name="colorOnPrimaryContainer">#002C5F</item>
+        <item name="colorSecondary">#03A9F4</item>
+        <item name="android:windowBackground">?attr/colorSurface</item>
+    </style>
+
+    <!-- 纯黑深色（AMOLED） -->
+    <style name="Theme.FormulaStudio.Amoled" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowBackground">#000000</item>
+        <item name="colorSurface">#000000</item>
+        <item name="colorSurfaceContainerHighest">#141414</item>
+        <item name="colorSurfaceContainerHigh">#101010</item>
+        <item name="colorSurfaceContainer">#0A0A0A</item>
+        <item name="colorSurfaceVariant">#1A1A1A</item>
+        <item name="colorOnSurface">#E6E6E6</item>
+        <item name="colorOnSurfaceVariant">#B0B0B0</item>
+        <item name="android:colorBackground">#000000</item>
+        <item name="android:textColorPrimary">#ECECEC</item>
+    </style>
 </resources>

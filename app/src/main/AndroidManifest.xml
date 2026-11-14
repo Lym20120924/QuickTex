@@ -25,6 +25,12 @@
             android:label="@string/library_title" />
 
         <activity
+            android:name=".AppearanceActivity"
+            android:exported="false"
+            android:label="@string/appearance_title"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
+
+        <activity
             android:name=".DocumentActivity"
             android:exported="false"
             android:label="@string/document_title"

@@ -93,6 +93,42 @@
     <string name="clear_favorites_confirm">确定清空所有收藏吗？</string>
     <string name="no_match">没有匹配的公式</string>
 
+    <!-- 外观设置 -->
+    <string name="appearance_title">外观设置</string>
+    <string name="section_theme_style">界面风格</string>
+    <string name="style_material">Material 3</string>
+    <string name="style_miuix">MIUIX</string>
+    <string name="section_nav_bar">导航栏</string>
+    <string name="nav_floating">悬浮底栏</string>
+    <string name="nav_floating_desc">底栏悬浮显示，带圆角与阴影</string>
+    <string name="nav_liquid">液态玻璃</string>
+    <string name="nav_liquid_desc">背景高斯模糊（毛玻璃效果）</string>
+    <string name="section_color">配色</string>
+    <string name="color_wallpaper">壁纸取色</string>
+    <string name="color_wallpaper_status">灵动 · 跟随系统</string>
+    <string name="color_dynamic">系统动态色</string>
+    <string name="color_dynamic_desc">从系统壁纸自动提取颜色</string>
+    <string name="color_picker">主题色</string>
+    <string name="color_picker_disabled">系统动态色开启时不可用</string>
+    <string name="color_add">添加自定义颜色</string>
+    <string name="color_default">默认</string>
+    <string name="color_style">配色风格</string>
+    <string name="color_style_dynamic">灵动</string>
+    <string name="color_style_classic">经典</string>
+    <string name="color_style_fresh">清新</string>
+    <string name="color_style_deep">深邃</string>
+    <string name="color_contrast">对比度</string>
+    <string name="color_content">内容取色</string>
+    <string name="section_display">显示模式</string>
+    <string name="display_system">跟随系统</string>
+    <string name="display_light">浅色</string>
+    <string name="display_dark">深色</string>
+    <string name="display_amoled">纯黑深色</string>
+    <string name="display_amoled_desc">纯黑背景，AMOLED 屏幕更省电</string>
+    <string name="section_splash">启动画面与图标</string>
+    <string name="splash_theme">启动画面跟随主题</string>
+    <string name="icon_theme">桌面图标跟随主题</string>
+
     <!-- LaTeX 文档渲染 -->
     <string name="document_title">LaTeX 文档</string>
     <string name="document_input_hint">粘贴 LaTeX 源码（支持 \\[ \\]、$...$、align、tikz、pgfplots）</string>

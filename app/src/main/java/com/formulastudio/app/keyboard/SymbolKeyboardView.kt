@@ -1,6 +1,11 @@
 package com.formulastudio.app.keyboard
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.BitmapDrawable
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.Gravity
@@ -12,6 +17,8 @@ import android.widget.TextView
 import androidx.core.content.ContextCompat
 import com.formulastudio.app.R
 import com.formulastudio.app.editor.SymbolAction
+import com.formulastudio.app.util.Glass
+import com.formulastudio.app.util.Prefs
 
 /**
  * 数学符号键盘：顶部横向分类标签 + 符号按钮网格 + 底部工具行。
@@ -30,7 +37,7 @@ class SymbolKeyboardView @JvmOverloads constructor(
     private val gridContainer: LinearLayout
     private val gridScroll: ScrollView
 
-    private val primaryColor: Int = ContextCompat.getColor(context, R.color.accent_blue)
+    private val primaryColor: Int = Prefs.accentColor(context)
     private val onPrimaryColor: Int = android.graphics.Color.WHITE
     private val surfaceVariantColor: Int = ContextCompat.getColor(context, R.color.chip_bg)
     private val onSurfaceVariantColor: Int = ContextCompat.getColor(context, R.color.chip_text)
@@ -170,4 +177,68 @@ class SymbolKeyboardView @JvmOverloads constructor(
     private fun dp(v: Int): Int = TypedValue.applyDimension(
         TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), resources.displayMetrics
     ).toInt()
+
+    // ---------- 导航栏外观 ----------
+
+    /** 悬浮底栏 / 液态玻璃 */
+    fun applyChrome(floating: Boolean, liquid: Boolean) {
+        val density = resources.displayMetrics.density
+        if (floating) {
+            (layoutParams as? LinearLayout.LayoutParams)?.let { lp ->
+                lp.setMargins(
+                    (10 * density).toInt(), 0, (10 * density).toInt(), (10 * density).toInt()
+                )
+                layoutParams = lp
+            }
+            background = GradientDrawable().apply {
+                cornerRadius = 20f * density
+                setColor(surfaceColor())
+            }
+            elevation = 12f * density
+        } else {
+            (layoutParams as? LinearLayout.LayoutParams)?.let { lp ->
+                lp.setMargins(0, 0, 0, 0)
+                layoutParams = lp
+            }
+            background = ColorDrawable(surfaceColor())
+            elevation = 0f
+        }
+        if (liquid) applyLiquidGlass() else setLayerType(View.LAYER_TYPE_NONE, null)
+    }
+
+    private fun surfaceColor(): Int {
+        val tv = TypedValue()
+        return if (context.theme.resolveAttribute(
+                com.google.android.material.R.attr.colorSurface, tv, true
+            ) && tv.resourceId != 0
+        ) {
+            ContextCompat.getColor(context, tv.resourceId)
+        } else {
+            0xFFFFFFFF.toInt()
+        }
+    }
+
+    /** 液态玻璃：截取当前窗口、高斯模糊后作为背景 */
+    private fun applyLiquidGlass() {
+        val act = context as? android.app.Activity ?: return
+        post {
+            try {
+                val root = act.window.decorView
+                if (root.width <= 0 || root.height <= 0 || width <= 0 || height <= 0) return@post
+                val loc = IntArray(2)
+                getLocationOnScreen(loc)
+                val full = Bitmap.createBitmap(root.width, root.height, Bitmap.Config.ARGB_8888)
+                root.draw(Canvas(full))
+                val x = loc[0].coerceIn(0, root.width - 1)
+                val y = loc[1].coerceIn(0, root.height - 1)
+                val w = width.coerceAtMost(root.width - x)
+                val h = height.coerceAtMost(root.height - y)
+                if (w <= 0 || h <= 0) return@post
+                val crop = Bitmap.createBitmap(full, x, y, w, h)
+                background = BitmapDrawable(resources, Glass.blur(crop, 20))
+            } catch (e: Exception) {
+                // 毛玻璃失败时保持普通背景
+            }
+        }
+    }
 }

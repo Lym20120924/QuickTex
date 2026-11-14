@@ -47,6 +47,7 @@ class LibraryActivity : AppCompatActivity() {
     private val chipText: Int get() = ContextCompat.getColor(this, R.color.lib_chip_text)
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        setTheme(com.formulastudio.app.util.Prefs.themeRes(this))
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         buildUi()

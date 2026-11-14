@@ -41,6 +41,8 @@ class DocumentActivity : AppCompatActivity() {
     private val mathLatex = ArrayList<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        com.formulastudio.app.util.Prefs.applyDisplayMode(this)
+        setTheme(com.formulastudio.app.util.Prefs.themeRes(this))
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_document)
         input = findViewById(R.id.doc_input)
@@ -68,26 +70,27 @@ class DocumentActivity : AppCompatActivity() {
         }
         toast(R.string.document_rendering)
         Thread {
+            // 解析可以放后台；但 View / Bitmap 必须在主线程创建，否则会渲染成空白
             val blocks = LatexDocument.parse(src)
-            val rendered = ArrayList<Item>()
-            val latex = ArrayList<String>()
-            for (b in blocks) {
-                when (b.type) {
-                    LatexDocument.Type.TEXT -> {
-                        if (b.text.isNotBlank()) rendered.add(Item(true, b.text, null))
-                    }
-                    LatexDocument.Type.MATH -> {
-                        val bmp = BlockRenderer.mathBitmap(this, b.text, 2.5f)
-                        latex.add(b.text)
-                        rendered.add(Item(false, b.text, bmp))
-                    }
-                    LatexDocument.Type.FIGURE -> {
-                        val bmp = BlockRenderer.figureBitmap(this, b.figure, b.text)
-                        rendered.add(Item(false, b.text, bmp))
+            runOnUiThread {
+                val rendered = ArrayList<Item>()
+                val latex = ArrayList<String>()
+                for (b in blocks) {
+                    when (b.type) {
+                        LatexDocument.Type.TEXT -> {
+                            if (b.text.isNotBlank()) rendered.add(Item(true, b.text, null))
+                        }
+                        LatexDocument.Type.MATH -> {
+                            val bmp = BlockRenderer.mathBitmap(this, b.text, 2.5f)
+                            latex.add(b.text)
+                            rendered.add(Item(false, b.text, bmp))
+                        }
+                        LatexDocument.Type.FIGURE -> {
+                            val bmp = BlockRenderer.figureBitmap(this, b.figure, b.text)
+                            rendered.add(Item(false, b.text, bmp))
+                        }
                     }
                 }
-            }
-            runOnUiThread {
                 items.clear(); items.addAll(rendered)
                 mathLatex.clear(); mathLatex.addAll(latex)
                 rebuildViews()
