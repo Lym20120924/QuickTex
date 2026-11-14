@@ -142,6 +142,10 @@
     <string name="document_export_failed">Export failed</string>
     <string name="document_copy_done">Copied %1$d formulas</string>
     <string name="document_math_count">%1$d formulas · %2$d figures</string>
+    <string name="document_detected_title">LaTeX document detected</string>
+    <string name="document_detected_msg">You pasted a whole LaTeX document, but the formula editor handles one formula at a time. Open the document renderer for the full result?</string>
+    <string name="document_open">Open document renderer</string>
+    <string name="document_first_only">Render first formula only</string>
 
     <!-- 设置 -->
     <string name="settings">Settings</string>

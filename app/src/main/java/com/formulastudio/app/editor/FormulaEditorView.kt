@@ -1207,6 +1207,12 @@ class FormulaEditorView @JvmOverloads constructor(
         val y = gBox.baseline + paddingTop
         val vw = width
         val vh = height
+        // 先把滚动范围钳制在内容范围内，避免内容被滚到画面之外而“看起来空白”
+        val maxX = max(0, (contentW - vw).toInt())
+        val maxY = max(0, (contentH - vh).toInt())
+        if (scrollX > maxX || scrollY > maxY) {
+            scrollTo(scrollX.coerceIn(0, maxX), scrollY.coerceIn(0, maxY))
+        }
         if (x < scrollX) scrollTo(x.toInt() - 8, scrollY)
         else if (x > scrollX + vw) scrollTo((x - vw + 8).toInt(), scrollY)
         if (y < scrollY) scrollTo(scrollX, max(0, y.toInt() - 8))

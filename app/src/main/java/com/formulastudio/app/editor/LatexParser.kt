@@ -130,6 +130,10 @@ class LatexParser {
                         dispatchCommand(g, name)
                     }
                 }
+                c == '%' -> {
+                    // LaTeX 注释：跳过到行尾
+                    while (i < s.length && s[i] != '\n') i++
+                }
                 c.isWhitespace() -> i++
                 else -> {
                     appendChar(g, c)

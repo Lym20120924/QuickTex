@@ -178,6 +178,19 @@ class LatexParserTest {
     }
 
     @Test
+    fun `整份文档直接解析不崩`() {
+        val doc = LatexParserTest::class.java.classLoader!!
+            .getResourceAsStream("sample.tex")!!.bufferedReader().readText()
+        val g = parser.parse(doc)
+        assertTrue("整份文档应解析出内容", g.nodes.isNotEmpty())
+    }
+
+    @Test
+    fun `注释被忽略`() {
+        assertEquals("x", roundTrip("x % 这是注释\n"))
+    }
+
+    @Test
     fun `多行公式`() {
         val out = roundTrip("x=1\\\\y=2")
         assertTrue("应含换行：$out", out.contains("\\\\"))

@@ -29,6 +29,7 @@ import com.formulastudio.app.databinding.ActivityMainBinding
 import com.formulastudio.app.editor.SymbolAction
 import com.formulastudio.app.export.PngSaver
 import com.formulastudio.app.export.SvgExporter
+import com.formulastudio.app.doc.LatexDocument
 import com.formulastudio.app.util.Prefs
 import com.formulastudio.app.util.Store
 import java.io.File
@@ -156,6 +157,30 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private var docPromptFor: String? = null
+
+    /** 检测到整份 LaTeX 文档时的引导 */
+    private fun promptDocument(text: String) {
+        if (docPromptFor == text) return
+        docPromptFor = text
+        AlertDialog.Builder(this)
+            .setTitle(R.string.document_detected_title)
+            .setMessage(R.string.document_detected_msg)
+            .setPositiveButton(R.string.document_open) { _, _ ->
+                startActivity(
+                    Intent(this, DocumentActivity::class.java).putExtra("latex", text)
+                )
+            }
+            .setNegativeButton(R.string.document_first_only) { _, _ ->
+                val first = LatexDocument.parse(text)
+                    .firstOrNull { it.type == LatexDocument.Type.MATH }
+                if (first != null) binding.formulaEditor.loadLatex(first.text)
+            }
+            .setNeutralButton(R.string.cancel, null)
+            .setOnDismissListener { docPromptFor = null }
+            .show()
+    }
+
     /** 记录历史：停止输入 1.5s 后写入，去重由 Store 负责 */
     private fun scheduleHistory(latex: String) {
         historyRunnable?.let { uiHandler.removeCallbacks(it) }
@@ -179,6 +204,11 @@ class MainActivity : AppCompatActivity() {
                 val text = s?.toString() ?: return
                 formulaDebounce?.let { uiHandler.removeCallbacks(it) }
                 formulaDebounce = Runnable {
+                    // 粘贴了整份 LaTeX 文档 → 引导去「文档渲染」
+                    if (text.contains("\\begin{document}")) {
+                        promptDocument(text)
+                        return@Runnable
+                    }
                     if (text != binding.formulaEditor.getLatex()) {
                         binding.formulaEditor.loadLatex(text)
                     }

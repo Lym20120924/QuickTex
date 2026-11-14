@@ -142,6 +142,10 @@
     <string name="document_export_failed">导出失败</string>
     <string name="document_copy_done">已复制 %1$d 段公式</string>
     <string name="document_math_count">共 %1$d 段公式 · %2$d 张图</string>
+    <string name="document_detected_title">检测到 LaTeX 文档</string>
+    <string name="document_detected_msg">你粘贴的是整份 LaTeX 文档，而公式编辑器一次只能编辑一个公式。要打开「文档渲染」查看完整效果吗？</string>
+    <string name="document_open">打开文档渲染</string>
+    <string name="document_first_only">只渲染第一个公式</string>
 
     <!-- 设置 -->
     <string name="settings">设置</string>
