@@ -116,10 +116,12 @@ class DocumentActivity : AppCompatActivity() {
                     val iv = ImageView(this).apply {
                         setImageBitmap(item.bitmap)
                         adjustViewBounds = true
+                        scaleType = ImageView.ScaleType.FIT_CENTER
+                        // 按原始尺寸居中显示，不拉伸（避免小公式被拉巨大 / 大公式被压糊）
                         layoutParams = LinearLayout.LayoutParams(
-                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
                             LinearLayout.LayoutParams.WRAP_CONTENT
-                        )
+                        ).apply { gravity = Gravity.CENTER }
                     }
                     box.addView(iv)
                 } else {

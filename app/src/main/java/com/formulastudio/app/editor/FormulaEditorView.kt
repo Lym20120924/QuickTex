@@ -454,6 +454,29 @@ class FormulaEditorView @JvmOverloads constructor(
         contentH = (layoutRoot?.h ?: 0f) + paddingTop + paddingBottom
     }
 
+    /**
+     * 按当前排版结果绘制公式内容（不含光标）。
+     *
+     * 多行公式（含 `\\`）必须逐行绘制；直接画 root 会把所有行叠在一起，
+     * 这正是之前导出 / 文档渲染里长公式“画不全”的原因。
+     */
+    private fun drawContent(canvas: DrawOps) {
+        val layout = layoutRoot ?: return
+        val lines = multilineRowNodes[formula.root]
+        val lineBoxes = multilineLines[formula.root]
+        if (lines != null && lineBoxes != null) {
+            val lineGap = 0.4f * baseSize
+            var yOff = 0f
+            for ((i, lg) in lines.withIndex()) {
+                val tmp = MathNode.Group().apply { nodes.addAll(lg) }
+                drawNode(canvas, tmp, lineBoxes[i], 0f, yOff)
+                yOff += lineBoxes[i].h + lineGap
+            }
+            return
+        }
+        drawNode(canvas, formula.root, layout, 0f, 0f)
+    }
+
     /** 多行排版缓存：Group → 每行的 LayoutBox 列表 */
     private val multilineLines = HashMap<MathNode.Group, List<LayoutBox>>()
     /** NewLine 分隔出的行节点列表缓存 */
@@ -789,41 +812,8 @@ class FormulaEditorView @JvmOverloads constructor(
             return
         }
 
-        // 多行模式：逐行绘制
-        val lines = multilineRowNodes[formula.root]
-        val lineBoxes = multilineLines[formula.root]
-        if (lines != null && lineBoxes != null) {
-            val lineGap = 0.4f * baseSize
-            var yOff = 0f
-            for ((i, lg) in lines.withIndex()) {
-                val tmp = MathNode.Group().apply { nodes.addAll(lg) }
-                val lb = lineBoxes[i]
-                drawNode(CanvasOps(canvas), tmp, lb, 0f, yOff)
-                yOff += lb.h + lineGap
-            }
-            // 光标
-            if (hasFocus()) {
-                val gBox = groupBoxes[formula.cursorContainer]
-                val origin = groupOrigins[formula.cursorContainer]
-                if (gBox != null && origin != null) {
-                    val ox = origin.first
-                    val oy = origin.second
-                    canvas.drawRoundRect(
-                        RectF(ox - 2f * density, oy - 2f * density, ox + gBox.w + 2f * density, oy + gBox.h + 2f * density),
-                        5f * density, 5f * density, focusFillPaint
-                    )
-                    if (blinkOn) {
-                        val x = ox + caretX(formula.cursorContainer, gBox)
-                        val top = oy + gBox.baseline - ascent(gBox.sz)
-                        val bottom = oy + gBox.baseline + descent(gBox.sz)
-                        canvas.drawLine(x, top, x, bottom, caretPaint)
-                    }
-                }
-            }
-            canvas.restore()
-            return
-        }
-        drawNode(CanvasOps(canvas), formula.root, layout, 0f, 0f)
+        // 内容绘制（多行会逐行绘制）—— 与导出共用同一套逻辑
+        drawContent(CanvasOps(canvas))
 
         // 光标所在容器高亮 + 光标
         if (hasFocus()) {
@@ -1422,7 +1412,7 @@ class FormulaEditorView @JvmOverloads constructor(
         val oy = (h - l.h * s) / 2f
         c.translate(ox, oy)
         c.scale(s, s)
-        drawNode(CanvasOps(c), formula.root, l, 0f, 0f)
+        drawContent(CanvasOps(c))
         return bmp
     }
 
@@ -1447,7 +1437,7 @@ class FormulaEditorView @JvmOverloads constructor(
         // 按 density 归一化，让 SVG 尺寸与设备无关
         val s = scale / density
         svg.scale(s, s)
-        drawNode(svg, formula.root, l, 0f, 0f)
+        drawContent(svg)
         return svg.build(l.w * s, l.h * s)
     }
 
