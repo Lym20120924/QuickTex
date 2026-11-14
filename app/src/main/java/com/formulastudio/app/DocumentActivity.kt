@@ -165,7 +165,7 @@ class DocumentActivity : AppCompatActivity() {
         Thread {
             val margin = 24f
             val docW = 1200f
-            data class Piece(val isText: Boolean, val text: String, val svg: String?)
+            data class Piece(val isText: Boolean, val text: String, val bmp: android.graphics.Bitmap?)
             val pieces = ArrayList<Piece>()
             var totalH = margin
             for (it in items) {
@@ -173,12 +173,10 @@ class DocumentActivity : AppCompatActivity() {
                     pieces.add(Piece(true, it.text, null))
                     totalH += it.text.split("\n").size * 36f + 18f
                 } else {
-                    val svg = BlockRenderer.mathSvg(this, it.text)
-                    pieces.add(Piece(false, it.text, svg))
-                    val d = svg?.let { parseSvgSize(it) }
-                    if (d != null) {
-                        val sc = ((docW - margin * 2) / d.first).coerceAtMost(1f)
-                        totalH += d.second * sc + 20f
+                    pieces.add(Piece(false, it.text, it.bitmap))
+                    if (it.bitmap != null) {
+                        val sc = ((docW - margin * 2) / it.bitmap.width).coerceAtMost(1f)
+                        totalH += it.bitmap.height * sc + 20f
                     } else {
                         totalH += 60f
                     }
@@ -204,15 +202,21 @@ class DocumentActivity : AppCompatActivity() {
                     }
                     y += 10f
                 } else {
-                    val svg = pc.svg
-                    val d = svg?.let { parseSvgSize(it) }
-                    if (d != null) {
-                        val sc = ((docW - margin * 2) / d.first).coerceAtMost(1f)
-                        val inner = svgInner(svg)
-                        sb.append("<g transform=\"translate(").append(margin).append(',').append(y)
-                            .append(") scale(").append(sc).append(")\">").append(inner)
-                            .append("</g>\n")
-                        y += d.second * sc + 20f
+                    val b = pc.bmp
+                    if (b != null && b.width > 0 && b.height > 0) {
+                        val sc = ((docW - margin * 2) / b.width).coerceAtMost(1f)
+                        val w = b.width * sc
+                        val h = b.height * sc
+                        val bos = java.io.ByteArrayOutputStream()
+                        b.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, bos)
+                        val b64 = android.util.Base64.encodeToString(
+                            bos.toByteArray(), android.util.Base64.NO_WRAP
+                        )
+                        sb.append("<image href=\"data:image/png;base64,").append(b64)
+                            .append("\" x=\"").append(margin).append("\" y=\"").append(y)
+                            .append("\" width=\"").append(w).append("\" height=\"").append(h)
+                            .append("\"/>\n")
+                        y += h + 20f
                     } else {
                         y += 28f
                         sb.append("<text x=\"").append(margin).append("\" y=\"").append(y)
