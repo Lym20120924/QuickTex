@@ -10,10 +10,11 @@ import com.formulastudio.core.render.RenderTarget
  */
 class PdfTarget(
     private val doc: PdfDocument,
-    private val page: PdfDocument.Page
+    private val page: PdfDocument.Page,
+    res: android.content.res.Resources
 ) : RenderTarget {
 
-    private val inner = CanvasTarget(page.canvas)
+    private val inner = CanvasTarget(page.canvas, res)
 
     override fun save() = inner.save()
     override fun restore() = inner.restore()
