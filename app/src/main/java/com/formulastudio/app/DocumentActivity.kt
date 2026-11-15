@@ -17,9 +17,11 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import com.formulastudio.app.doc.BlockRenderer
+import com.formulastudio.app.doc.DocExporter
 import com.formulastudio.app.doc.LatexDocument
 import com.formulastudio.app.util.Prefs
 import java.io.File
@@ -36,7 +38,7 @@ class DocumentActivity : AppCompatActivity() {
     private lateinit var status: TextView
 
     /** 渲染结果：文本或位图 */
-    private data class Item(val isText: Boolean, val text: String, val bitmap: Bitmap?)
+    data class Item(val isText: Boolean, val text: String, val bitmap: Bitmap?)
     private val items = ArrayList<Item>()
     private val mathLatex = ArrayList<String>()
 
@@ -51,7 +53,7 @@ class DocumentActivity : AppCompatActivity() {
 
         findViewById<TextView>(R.id.doc_back).setOnClickListener { finish() }
         findViewById<TextView>(R.id.doc_render).setOnClickListener { render() }
-        findViewById<TextView>(R.id.doc_export).setOnClickListener { exportSvg() }
+        findViewById<TextView>(R.id.doc_export).setOnClickListener { showExportMenu() }
         findViewById<TextView>(R.id.doc_copy).setOnClickListener { copyAll() }
 
         if (intent?.getStringExtra("latex") != null) {
@@ -153,6 +155,54 @@ class DocumentActivity : AppCompatActivity() {
         textSize = 15f
         typeface = Typeface.SERIF
         setPadding(0, dp(6), 0, dp(6))
+    }
+
+    /** 导出菜单：PDF / Word / SVG */
+    private fun showExportMenu() {
+        val items = arrayOf(
+            getString(R.string.document_export_pdf),
+            getString(R.string.document_export_docx),
+            getString(R.string.document_export_svg)
+        )
+        AlertDialog.Builder(this)
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> exportVia { DocExporter.toPdf(this, items1()) }
+                    1 -> exportVia { DocExporter.toDocx(this, items1()) }
+                    2 -> exportSvg()
+                }
+            }
+            .show()
+    }
+
+    private fun items1() = items
+
+    /** 导出文件并调起系统分享 */
+    private fun exportVia(block: () -> java.io.File?) {
+        toast(R.string.document_rendering)
+        Thread {
+            val f = block()
+            runOnUiThread {
+                if (f == null) { toast(R.string.document_export_failed); return@runOnUiThread }
+                try {
+                    val uri = androidx.core.content.FileProvider.getUriForFile(
+                        this, "com.formulastudio.app.fileprovider", f
+                    )
+                    val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                        type = when {
+                            f.name.endsWith(".pdf") -> "application/pdf"
+                            f.name.endsWith(".docx") -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            else -> "image/svg+xml"
+                        }
+                        putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    startActivity(android.content.Intent.createChooser(send, getString(R.string.share)))
+                } catch (e: Exception) {
+                    toast(R.string.document_export_failed)
+                }
+            }
+        }.start()
     }
 
     // ---------- 导出 SVG（真矢量） ----------
