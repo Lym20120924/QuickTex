@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "FormulaStudio"
 include(":app")
+include(":core")
