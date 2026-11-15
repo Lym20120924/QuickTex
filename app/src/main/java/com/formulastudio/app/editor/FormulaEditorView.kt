@@ -821,7 +821,7 @@ class FormulaEditorView @JvmOverloads constructor(
         }
 
         // 内容绘制（多行会逐行绘制）—— 与导出共用同一套逻辑
-        drawContent(CanvasTarget(canvas))
+        drawContent(CanvasTarget(canvas, resources))
 
         // 光标所在容器高亮 + 光标
         if (hasFocus()) {
@@ -1420,7 +1420,7 @@ class FormulaEditorView @JvmOverloads constructor(
         val oy = (h - l.h * s) / 2f
         c.translate(ox, oy)
         c.scale(s, s)
-        drawContent(CanvasTarget(c))
+        drawContent(CanvasTarget(c, resources))
         return bmp
     }
 

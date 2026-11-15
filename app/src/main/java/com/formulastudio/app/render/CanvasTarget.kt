@@ -10,12 +10,15 @@ import com.formulastudio.core.render.RenderTarget
 import com.formulastudio.core.render.TextStyle
 
 /** Android [Canvas] 后端：屏幕显示 / PNG 导出用 */
-class CanvasTarget(private val canvas: Canvas) : RenderTarget {
+class CanvasTarget(
+    private val canvas: Canvas,
+    private val res: android.content.res.Resources
+) : RenderTarget {
 
     private fun paint(style: TextStyle) = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textSize = style.size
         color = style.color
-        typeface = typefaceFor(style)
+        typeface = typefaceFor(res, style)
     }
 
     private fun paint(ink: Ink) = Paint(Paint.ANTI_ALIAS_FLAG).apply {

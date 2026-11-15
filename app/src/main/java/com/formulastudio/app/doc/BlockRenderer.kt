@@ -99,8 +99,8 @@ object BlockRenderer {
             val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bmp)
             canvas.drawColor(Color.WHITE)
-            if (figure == "pgfplots") FigureRenderer.pgfplots(src, CanvasTarget(canvas))
-            else FigureRenderer.tikz(src, CanvasTarget(canvas))
+            if (figure == "pgfplots") FigureRenderer.pgfplots(src, CanvasTarget(canvas, context.resources))
+            else FigureRenderer.tikz(src, CanvasTarget(canvas, context.resources))
             capWidth(bmp, 2400)
         } catch (e: Exception) {
             null
