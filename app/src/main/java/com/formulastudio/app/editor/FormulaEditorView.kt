@@ -1,5 +1,13 @@
 package com.formulastudio.app.editor
 
+import com.formulastudio.app.render.CanvasTarget
+import com.formulastudio.app.render.SvgTarget
+import com.formulastudio.app.render.ink
+import com.formulastudio.app.render.textStyle
+import com.formulastudio.app.render.katexFontFaceCss
+import com.formulastudio.core.render.Ink
+import com.formulastudio.core.render.PathOp
+import com.formulastudio.core.render.RenderTarget
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
@@ -66,8 +74,8 @@ class FormulaEditorView @JvmOverloads constructor(
         fallback
     }
 
-    private val mainFont: Typeface = family(R.font.katex_math, Typeface.create("serif", Typeface.NORMAL))
-    private val varFont: Typeface = family(R.font.katex_math_var, Typeface.create("serif", Typeface.ITALIC))
+    internal val mainFont: Typeface = family(R.font.katex_math, Typeface.create("serif", Typeface.NORMAL))
+    internal val varFont: Typeface = family(R.font.katex_math_var, Typeface.create("serif", Typeface.ITALIC))
     private val opFont: Typeface = family(R.font.katex_op, mainFont)
 
     /**
@@ -161,7 +169,7 @@ class FormulaEditorView @JvmOverloads constructor(
         typeface = mainFont
         color = inkColor
     }
-    private val rawPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    internal val rawPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         typeface = Typeface.MONOSPACE
         color = rawColor
     }
@@ -389,7 +397,7 @@ class FormulaEditorView @JvmOverloads constructor(
         (h * 0.10f).coerceAtLeast(4f * density)
 
     /** 手绘细括号，替代字体放大导致的粗括号 */
-    private fun drawBracket(canvas: DrawOps, ch: String, x: Float, y: Float, h: Float) {
+    private fun drawBracket(canvas: com.formulastudio.core.render.RenderTarget, ch: String, x: Float, y: Float, h: Float) {
         if (ch == "." || ch.isEmpty()) return
         val w = bracketW(h)
         when (ch) {
@@ -398,24 +406,24 @@ class FormulaEditorView @JvmOverloads constructor(
                     PathOp.MoveTo(x + w, y),
                     PathOp.CubicTo(x, y + h * 0.25f, x, y + h * 0.75f, x + w, y + h)
                 ), bracketPaint
-            )
+            .ink())
             ")" -> canvas.drawPath(
                 listOf(
                     PathOp.MoveTo(x, y),
                     PathOp.CubicTo(x + w, y + h * 0.25f, x + w, y + h * 0.75f, x, y + h)
                 ), bracketPaint
-            )
+            .ink())
             "[" -> {
-                canvas.drawLine(x, y, x, y + h, bracketPaint)
-                canvas.drawLine(x, y, x + w, y, bracketPaint)
-                canvas.drawLine(x, y + h, x + w, y + h, bracketPaint)
+                canvas.drawLine(x, y, x, y + h, bracketPaint.ink())
+                canvas.drawLine(x, y, x + w, y, bracketPaint.ink())
+                canvas.drawLine(x, y + h, x + w, y + h, bracketPaint.ink())
             }
             "]" -> {
-                canvas.drawLine(x + w, y, x + w, y + h, bracketPaint)
-                canvas.drawLine(x, y, x + w, y, bracketPaint)
-                canvas.drawLine(x, y + h, x + w, y + h, bracketPaint)
+                canvas.drawLine(x + w, y, x + w, y + h, bracketPaint.ink())
+                canvas.drawLine(x, y, x + w, y, bracketPaint.ink())
+                canvas.drawLine(x, y + h, x + w, y + h, bracketPaint.ink())
             }
-            "|" -> canvas.drawLine(x + w / 2f, y, x + w / 2f, y + h, bracketPaint)
+            "|" -> canvas.drawLine(x + w / 2f, y, x + w / 2f, y + h, bracketPaint.ink())
             "\\{", "{" -> canvas.drawPath(
                 listOf(
                     PathOp.MoveTo(x + w * 0.85f, y),
@@ -424,7 +432,7 @@ class FormulaEditorView @JvmOverloads constructor(
                     PathOp.QuadTo(x, y + h * 0.5f, x, y + h * 0.58f),
                     PathOp.QuadTo(x, y + h * 0.86f, x + w * 0.85f, y + h)
                 ), bracketPaint
-            )
+            .ink())
             "\\}", "}" -> canvas.drawPath(
                 listOf(
                     PathOp.MoveTo(x + w * 0.15f, y),
@@ -433,11 +441,11 @@ class FormulaEditorView @JvmOverloads constructor(
                     PathOp.QuadTo(x + w, y + h * 0.5f, x + w, y + h * 0.58f),
                     PathOp.QuadTo(x + w, y + h * 0.86f, x + w * 0.15f, y + h)
                 ), bracketPaint
-            )
+            .ink())
             else -> {
                 textPaint.textSize = h * 0.85f
                 val fm = textPaint.fontMetrics
-                canvas.drawText(ch, x, y + h - fm.descent - (h * 0.05f), textPaint)
+                canvas.drawText(ch, x, y + h - fm.descent - (h * 0.05f), textPaint.textStyle())
             }
         }
     }
@@ -460,7 +468,7 @@ class FormulaEditorView @JvmOverloads constructor(
      * 多行公式（含 `\\`）必须逐行绘制；直接画 root 会把所有行叠在一起，
      * 这正是之前导出 / 文档渲染里长公式“画不全”的原因。
      */
-    private fun drawContent(canvas: DrawOps) {
+    private fun drawContent(canvas: com.formulastudio.core.render.RenderTarget) {
         val layout = layoutRoot ?: return
         val lines = multilineRowNodes[formula.root]
         val lineBoxes = multilineLines[formula.root]
@@ -813,7 +821,7 @@ class FormulaEditorView @JvmOverloads constructor(
         }
 
         // 内容绘制（多行会逐行绘制）—— 与导出共用同一套逻辑
-        drawContent(CanvasOps(canvas))
+        drawContent(CanvasTarget(canvas))
 
         // 光标所在容器高亮 + 光标
         if (hasFocus()) {
@@ -891,7 +899,7 @@ class FormulaEditorView @JvmOverloads constructor(
         invalidate()
     }
 
-    private fun drawNode(canvas: DrawOps, n: MathNode, box: LayoutBox, x: Float, y: Float) {
+    private fun drawNode(canvas: com.formulastudio.core.render.RenderTarget, n: MathNode, box: LayoutBox, x: Float, y: Float) {
         // 先画各结构节点自身的装饰
         when (n) {
             is MathNode.Fraction -> {
@@ -899,26 +907,26 @@ class FormulaEditorView @JvmOverloads constructor(
                 val gap = 0.14f * n.num.let { box.sz }
                 val barH = max(1.3f * density, 0.07f * box.sz)
                 linePaint.strokeWidth = barH
-                canvas.drawLine(x, y + barY + gap + barH / 2f, x + box.w, y + barY + gap + barH / 2f, linePaint)
+                canvas.drawLine(x, y + barY + gap + barH / 2f, x + box.w, y + barY + gap + barH / 2f, linePaint.ink())
                 linePaint.strokeWidth = 1.4f * density
             }
             is MathNode.Sqrt -> {
                 val d = sqrtDrawData[n] ?: return
                 textPaint.textSize = d.radicalSize
-                canvas.drawText("√", x, y + d.radicalSize * 0.82f, textPaint)
+                canvas.drawText("√", x, y + d.radicalSize * 0.82f, textPaint.textStyle())
                 linePaint.strokeWidth = max(1.3f * density, 0.07f * box.sz)
                 canvas.drawLine(
                     x + d.radicalW + 0.02f * box.sz, y + d.gapAbove,
                     x + d.radicalW + 0.02f * box.sz + d.contentW, y + d.gapAbove,
                     linePaint
-                )
+                .ink())
                 linePaint.strokeWidth = 1.4f * density
                 textPaint.textSize = box.sz
             }
             is MathNode.Op -> {
                 val info = opInfo[n] ?: return
                 opPaint.textSize = info.size
-                canvas.drawText(info.sym, x + (box.w - info.w) / 2f, y + info.baseline, opPaint)
+                canvas.drawText(info.sym, x + (box.w - info.w) / 2f, y + info.baseline, opPaint.textStyle())
             }
             is MathNode.Paren -> {
                 val info = parenInfo[n] ?: return
@@ -947,43 +955,43 @@ class FormulaEditorView @JvmOverloads constructor(
                         val lx = x + 0.05f * box.sz
                         val rx = x + box.w - 0.05f * box.sz
                         accentPaint.strokeWidth = max(1.0f * density, 0.035f * box.sz)
-                        canvas.drawLine(lx, ay, rx, ay, accentPaint)
+                        canvas.drawLine(lx, ay, rx, ay, accentPaint.ink())
                         accentPaint.textSize = 0.45f * box.sz
                         accentPaint.textAlign = Paint.Align.LEFT
-                        canvas.drawText("▶", rx - 0.04f * box.sz, ay, accentPaint)
+                        canvas.drawText("▶", rx - 0.04f * box.sz, ay, accentPaint.textStyle())
                         accentPaint.strokeWidth = 1.4f * density
                     }
                     "overrightarrow" -> {
                         val lx = x + 0.05f * box.sz
                         val rx = x + box.w - 0.05f * box.sz
                         accentPaint.strokeWidth = max(1.0f * density, 0.035f * box.sz)
-                        canvas.drawLine(lx, ay, rx, ay, accentPaint)
+                        canvas.drawLine(lx, ay, rx, ay, accentPaint.ink())
                         accentPaint.textSize = 0.5f * box.sz
                         accentPaint.textAlign = Paint.Align.LEFT
-                        canvas.drawText("▶", rx - 0.04f * box.sz, ay, accentPaint)
+                        canvas.drawText("▶", rx - 0.04f * box.sz, ay, accentPaint.textStyle())
                         accentPaint.textAlign = Paint.Align.LEFT
                         accentPaint.strokeWidth = 1.4f * density
                     }
                     "hat" -> {
                         accentPaint.textSize = 0.68f * box.sz
-                        canvas.drawText("^", cx, ay, accentPaint)
+                        canvas.drawText("^", cx, ay, accentPaint.textStyle())
                     }
                     "bar", "overline" -> {
                         accentPaint.strokeWidth = max(1.2f * density, 0.06f * box.sz)
-                        canvas.drawLine(x + 0.02f * box.sz, ay, x + box.w - 0.02f * box.sz, ay, accentPaint)
+                        canvas.drawLine(x + 0.02f * box.sz, ay, x + box.w - 0.02f * box.sz, ay, accentPaint.ink())
                         accentPaint.strokeWidth = 1.4f * density
                     }
                     "dot" -> {
                         accentPaint.textSize = 0.65f * box.sz
-                        canvas.drawText("·", cx, ay, accentPaint)
+                        canvas.drawText("·", cx, ay, accentPaint.textStyle())
                     }
                     "widetilde", "widehat" -> {
                         accentPaint.textSize = 0.60f * box.sz
-                        canvas.drawText("~", cx, ay, accentPaint)
+                        canvas.drawText("~", cx, ay, accentPaint.textStyle())
                     }
                     else -> {
                         accentPaint.textSize = 0.65f * box.sz
-                        canvas.drawText(info.accent.take(1), cx, ay, accentPaint)
+                        canvas.drawText(info.accent.take(1), cx, ay, accentPaint.textStyle())
                     }
                 }
             }
@@ -1002,7 +1010,7 @@ class FormulaEditorView @JvmOverloads constructor(
                 var cx = x
                 for (r in textRuns(n.text, box.sz)) {
                     r.paint.textSize = box.sz
-                    canvas.drawText(r.text, cx, y + box.baseline, r.paint)
+                    canvas.drawText(r.text, cx, y + box.baseline, r.paint.textStyle())
                     cx += r.width
                 }
             }
@@ -1010,23 +1018,23 @@ class FormulaEditorView @JvmOverloads constructor(
                 val disp = CMD_DISPLAY[n.latex] ?: n.latex.trimStart('\\')
                 if (n.latex in OP_LATEX) {
                     opPaint.textSize = box.sz * 1.2f
-                    canvas.drawText(disp, x, y + box.baseline, opPaint)
+                    canvas.drawText(disp, x, y + box.baseline, opPaint.textStyle())
                 } else {
                     textPaint.textSize = box.sz
-                    canvas.drawText(disp, x, y + box.baseline, textPaint)
+                    canvas.drawText(disp, x, y + box.baseline, textPaint.textStyle())
                 }
             }
             is MathNode.Raw -> {
                 rawPaint.textSize = box.sz * 0.85f
-                canvas.drawText(n.latex, x, y + box.baseline, rawPaint)
+                canvas.drawText(n.latex, x, y + box.baseline, rawPaint.textStyle())
             }
             is MathNode.Func -> {
                 textPaint.textSize = box.sz * 0.95f
-                canvas.drawText(n.name, x, y + box.baseline, textPaint)
+                canvas.drawText(n.name, x, y + box.baseline, textPaint.textStyle())
             }
             is MathNode.Chem -> {
                 textPaint.textSize = box.sz * 0.92f
-                canvas.drawText(n.text, x, y + box.baseline, textPaint)
+                canvas.drawText(n.text, x, y + box.baseline, textPaint.textStyle())
             }
             is MathNode.Group -> {
                 groupOrigins[n] = x to y
@@ -1036,7 +1044,7 @@ class FormulaEditorView @JvmOverloads constructor(
                         x, y + box.baseline - ascent(box.sz),
                         x + box.w, y + box.baseline + descent(box.sz),
                         3f * density, 3f * density, placeholderPaint
-                    )
+                    .ink())
                 }
             }
             else -> {}
@@ -1412,7 +1420,7 @@ class FormulaEditorView @JvmOverloads constructor(
         val oy = (h - l.h * s) / 2f
         c.translate(ox, oy)
         c.scale(s, s)
-        drawContent(CanvasOps(c))
+        drawContent(CanvasTarget(c))
         return bmp
     }
 
@@ -1424,16 +1432,7 @@ class FormulaEditorView @JvmOverloads constructor(
         if (formula.root.nodes.isEmpty()) return null
         relayout()
         val l = layoutRoot ?: return null
-        val svg = SvgOps(
-            context = context,
-            fontFamily = { p ->
-                if (p.typeface === rawPaint.typeface) "monospace"
-                else "KaTeX_Main,KaTeX_AMS,KaTeX_Size1,KaTeX_Size2,KaTeX_Size3," +
-                    "KaTeX_Size4,KaTeX_Caligraphic,KaTeX_Script,KaTeX_Fraktur," +
-                    "KaTeX_Typewriter,serif"
-            },
-            italic = { p -> p.typeface === varFont }
-        )
+        val svg = SvgTarget { katexFontFaceCss(context) }
         // 按 density 归一化，让 SVG 尺寸与设备无关
         val s = scale / density
         svg.scale(s, s)

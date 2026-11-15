@@ -7,9 +7,10 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.view.ContextThemeWrapper
 import com.formulastudio.app.R
-import com.formulastudio.app.editor.CanvasOps
+import com.formulastudio.app.render.CanvasTarget
 import com.formulastudio.app.editor.FormulaEditorView
-import com.formulastudio.app.editor.SvgOps
+import com.formulastudio.app.render.SvgTarget
+import com.formulastudio.app.render.katexFontFaceCss
 import com.formulastudio.app.util.Prefs
 
 /**
@@ -98,8 +99,8 @@ object BlockRenderer {
             val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bmp)
             canvas.drawColor(Color.WHITE)
-            if (figure == "pgfplots") FigureRenderer.pgfplots(src, CanvasOps(canvas))
-            else FigureRenderer.tikz(src, CanvasOps(canvas))
+            if (figure == "pgfplots") FigureRenderer.pgfplots(src, CanvasTarget(canvas))
+            else FigureRenderer.tikz(src, CanvasTarget(canvas))
             capWidth(bmp, 2400)
         } catch (e: Exception) {
             null
@@ -108,11 +109,7 @@ object BlockRenderer {
 
     fun figureSvg(context: Context, figure: String, src: String): String? {
         return try {
-            val svg = SvgOps(
-                context = context,
-                fontFamily = { "KaTeX_Main,KaTeX_AMS,serif" },
-                italic = { false }
-            )
+            val svg = SvgTarget { katexFontFaceCss(context) }
             if (figure == "pgfplots") FigureRenderer.pgfplots(src, svg)
             else FigureRenderer.tikz(src, svg)
             val sz = if (figure == "pgfplots") FigureRenderer.pgfplotsSize(src)

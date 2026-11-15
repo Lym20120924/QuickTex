@@ -3,8 +3,10 @@ package com.formulastudio.app.doc
 import android.graphics.Paint
 import android.graphics.Typeface
 import com.formulastudio.app.editor.CMD_DISPLAY
-import com.formulastudio.app.editor.DrawOps
-import com.formulastudio.app.editor.PathOp
+import com.formulastudio.app.render.textStyle
+import com.formulastudio.core.render.Ink
+import com.formulastudio.core.render.PathOp
+import com.formulastudio.core.render.RenderTarget
 import kotlin.math.abs
 import kotlin.math.acos
 import kotlin.math.atan2
@@ -15,7 +17,7 @@ import kotlin.math.min
 import kotlin.math.sin
 
 /**
- * TikZ / pgfplots 图形渲染（常用子集），输出到 [DrawOps]，因此可同时导出 PNG 和 SVG。
+ * TikZ / pgfplots 图形渲染（常用子集），输出到 [RenderTarget]，因此可同时导出 PNG 和 SVG。
  *
  * 支持的常用构造：
  * - TikZ：`\coordinate`、`\draw`/`\path`（直线、折线、cycle、圆、矩形）、
@@ -99,13 +101,13 @@ object FigureRenderer {
 
     // ---------- 对外入口 ----------
 
-    fun tikz(src: String, out: DrawOps): Size {
+    fun tikz(src: String, out: RenderTarget): Size {
         val ctx = Ctx()
         parseTikz(src, ctx)
         return emit(ctx, out)
     }
 
-    fun pgfplots(src: String, out: DrawOps): Size {
+    fun pgfplots(src: String, out: RenderTarget): Size {
         val ctx = Ctx()
         parseAxis(src, ctx)
         return emit(ctx, out)
@@ -528,7 +530,7 @@ object FigureRenderer {
 
     fun pgfplotsSize(src: String): Size = Size(520f, 380f)
 
-    private fun emit(ctx: Ctx, out: DrawOps): Size {
+    private fun emit(ctx: Ctx, out: RenderTarget): Size {
         val margin = MARGIN
         val b = box(ctx)
         out.translate(-b.minX + margin, -b.minY + margin)
@@ -545,7 +547,7 @@ object FigureRenderer {
                     else ops.add(PathOp.LineTo(p.first, p.second))
                 }
                 if (op.closed) ops.add(PathOp.LineTo(op.pts[0].first, op.pts[0].second))
-                out.drawPath(ops, makePaint(op.color, op.width, op.dashed, false))
+                out.drawPath(ops, Ink(op.color, op.width, false, op.dashed))
             }
             is Op.Circle -> {
                 val ops = ArrayList<PathOp>()
@@ -554,7 +556,7 @@ object FigureRenderer {
                 ops.add(PathOp.CubicTo(op.c.first - op.r * 0.55f, op.c.second + op.r, op.c.first - op.r, op.c.second + op.r * 0.55f, op.c.first - op.r, op.c.second))
                 ops.add(PathOp.CubicTo(op.c.first - op.r, op.c.second - op.r * 0.55f, op.c.first - op.r * 0.55f, op.c.second - op.r, op.c.first, op.c.second - op.r))
                 ops.add(PathOp.CubicTo(op.c.first + op.r * 0.55f, op.c.second - op.r, op.c.first + op.r, op.c.second - op.r * 0.55f, op.c.first + op.r, op.c.second))
-                out.drawPath(ops, makePaint(op.color, op.width, op.dashed, false))
+                out.drawPath(ops, Ink(op.color, op.width, false, op.dashed))
             }
             is Op.Rect -> {
                 val ops = listOf(
@@ -562,7 +564,7 @@ object FigureRenderer {
                     PathOp.LineTo(op.x + op.w, op.y + op.h), PathOp.LineTo(op.x, op.y + op.h),
                     PathOp.LineTo(op.x, op.y)
                 )
-                out.drawPath(ops, makePaint(op.color, op.width, op.dashed, false))
+                out.drawPath(ops, Ink(op.color, op.width, false, op.dashed))
             }
             is Op.Text -> {
                 textPaint.color = op.color
@@ -577,7 +579,7 @@ object FigureRenderer {
                     op.anchor.startsWith("below") -> textPaint.textSize + 6f
                     else -> textPaint.textSize / 3f
                 }
-                out.drawText(op.text, op.x + dx, op.y + dy, textPaint)
+                out.drawText(op.text, op.x + dx, op.y + dy, textPaint.textStyle())
             }
             is Op.Arc -> {
                 val ops = ArrayList<PathOp>()
@@ -589,7 +591,7 @@ object FigureRenderer {
                     ops.add(PathOp.LineTo(op.c.first + op.r * cos(a), op.c.second + op.r * sin(a)))
                     prev = a
                 }
-                out.drawPath(ops, makePaint(op.color, op.width, false, false))
+                out.drawPath(ops, Ink(op.color, op.width, false, false))
             }
             is Op.RightAngle -> {
                 val v1 = norm(op.p1.first - op.v.first, op.p1.second - op.v.second)
@@ -602,7 +604,7 @@ object FigureRenderer {
                     PathOp.MoveTo(a.first, a.second), PathOp.LineTo(b.first, b.second),
                     PathOp.LineTo(c.first, c.second)
                 )
-                out.drawPath(ops, makePaint(op.color, op.width, false, false))
+                out.drawPath(ops, Ink(op.color, op.width, false, false))
             }
         }
         return b.size(margin)

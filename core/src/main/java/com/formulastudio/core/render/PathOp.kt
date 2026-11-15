@@ -17,4 +17,12 @@ sealed class PathOp {
         val x1: Float, val y1: Float,
         val x2: Float, val y2: Float
     ) : PathOp()
+
+    /** SVG path 的 d 属性片段 */
+    fun toSvg(): String = when (this) {
+        is MoveTo -> "M$x $y"
+        is LineTo -> "L$x $y"
+        is CubicTo -> "C$x1 $y1 $x2 $y2 $x3 $y3"
+        is QuadTo -> "Q$x1 $y1 $x2 $y2"
+    }
 }
