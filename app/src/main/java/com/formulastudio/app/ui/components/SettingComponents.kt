@@ -29,9 +29,9 @@ fun SectionHeader(title: String) {
 @Composable
 fun SwitchRow(
     title: String,
+    subtitle: String? = null,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    subtitle: String? = null
+    onCheckedChange: (Boolean) -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -58,9 +58,9 @@ fun SwitchRow(
 @Composable
 fun RadioRow(
     title: String,
+    subtitle: String? = null,
     selected: Boolean,
-    onClick: () -> Unit,
-    subtitle: String? = null
+    onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
