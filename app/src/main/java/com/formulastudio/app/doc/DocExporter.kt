@@ -118,6 +118,12 @@ object DocExporter {
                             .append(esc(line)).append("</w:t></w:r></w:p>\n")
                     }
                 } else {
+                    // 优先输出 Word 原生公式（可编辑），失败才回退到图片
+                    val omml = com.formulastudio.core.export.Omml.convert(it.text)
+                    if (omml != null) {
+                        body.append("<w:p><m:oMath>").append(omml).append("</m:oMath></w:p>\n")
+                        continue
+                    }
                     val bmp = it.bitmap ?: continue
                     if (bmp.width <= 0 || bmp.height <= 0) continue
                     imgIdx++
@@ -150,7 +156,8 @@ object DocExporter {
                 "xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" " +
                 "xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\" " +
                 "xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" " +
-                "xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\">" +
+                "xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\" " +
+                "xmlns:m=\"http://schemas.openxmlformats.org/officeDocument/2006/math\">" +
                 "<w:body>\n" + body + "</w:body></w:document>"
 
             val relsXml = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n" +

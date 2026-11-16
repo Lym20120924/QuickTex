@@ -1,5 +1,6 @@
 package com.formulastudio.core.model
 
+import com.formulastudio.core.export.Omml
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -36,5 +37,33 @@ class DocParserTest {
         val doc = DocParser.parse("\\title{测试}\n\\begin{equation}\nx=1\n\\end{equation}")
         assertEquals("测试", doc.title)
         assertTrue(doc.blocks.any { it is DocBlock.Math && it.latex == "x=1" })
+    }
+}
+
+class OmmlTest {
+    @Test
+    fun `分数转 OMML`() {
+        val m = Omml.convert("\\frac{a}{b}")!!
+        assertTrue(m.contains("<m:f>"))
+        assertTrue(m.contains("<m:num>"))
+        assertTrue(m.contains("<m:den>"))
+    }
+
+    @Test
+    fun `上下标与根号`() {
+        val m = Omml.convert("x^2 + y_1 + \\sqrt{z}")!!
+        assertTrue(m.contains("<m:sSup>"))
+        assertTrue(m.contains("<m:sSub>"))
+        assertTrue(m.contains("<m:rad>"))
+    }
+
+    @Test
+    fun `纯文本`() {
+        assertTrue(Omml.convert("hello")!!.contains("<m:t"))
+    }
+
+    @Test
+    fun `无法解析时返回 null 以便回退位图`() {
+        assertTrue(Omml.convert("") == null)
     }
 }
