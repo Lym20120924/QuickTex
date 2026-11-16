@@ -134,6 +134,7 @@
     <string name="document_input_hint">粘贴 LaTeX 源码（支持 \\[ \\]、$...$、align、tikz、pgfplots）</string>
     <string name="document_render">渲染</string>
     <string name="formula">公式</string>
+    <string name="title_compose_editor">Compose 公式编辑器</string>
     <string name="design_system_title">设计系统</string>
     <string name="document_export">导出</string>
     <string name="document_export_xlsx">导出 Excel</string>

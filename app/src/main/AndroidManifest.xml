@@ -54,6 +54,10 @@
         android:name=".ui.DesignSystemActivity"
         android:exported="false"
         android:label="@string/design_system_title" />
+    <activity
+        android:name=".ui.FormulaEditorComposeActivity"
+        android:exported="false"
+        android:label="@string/title_compose_editor" />
 </application>
 
 </manifest>
