@@ -24,6 +24,15 @@
             android:paddingStart="10dp"
             android:paddingEnd="14dp" />
 
+        <Button
+            android:id="@+id/btn_design_system"
+            style="?attr/borderlessButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:text="@string/design_system_title"
+            android:textSize="12sp"
+            android:contentDescription="@string/design_system_title" />
+
         <Space
             android:layout_width="0dp"
             android:layout_height="1dp"

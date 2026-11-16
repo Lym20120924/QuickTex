@@ -50,6 +50,10 @@
         android:name=".pdf.PdfViewerActivity"
         android:exported="false"
         android:label="@string/pdf_viewer_title" />
+    <activity
+        android:name=".ui.DesignSystemActivity"
+        android:exported="false"
+        android:label="@string/design_system_title" />
 </application>
 
 </manifest>

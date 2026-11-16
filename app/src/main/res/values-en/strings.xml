@@ -134,6 +134,7 @@
     <string name="document_input_hint">Paste LaTeX source (supports \\[ \\], $...$, align, tikz, pgfplots)</string>
     <string name="document_render">Render</string>
     <string name="formula">Formula</string>
+    <string name="design_system_title">Design System</string>
     <string name="document_export">Export</string>
     <string name="document_export_xlsx">Export Excel</string>
     <string name="pdf_viewer_title">PDF Viewer</string>

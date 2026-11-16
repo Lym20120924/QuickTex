@@ -259,6 +259,9 @@ class MainActivity : AppCompatActivity() {
             libraryLauncher.launch(Intent(this, LibraryActivity::class.java))
         }
         binding.btnExport.setOnClickListener { showExportMenu() }
+        binding.btnDesignSystem.setOnClickListener {
+            startActivity(android.content.Intent(this, com.formulastudio.app.ui.DesignSystemActivity::class.java))
+        }
         binding.btnDoc.setOnClickListener {
             startActivity(Intent(this, DocumentActivity::class.java))
         }
