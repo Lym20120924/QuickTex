@@ -1,316 +1,288 @@
 package com.formulastudio.app
 
+import android.app.Activity
 import android.content.Intent
-import android.graphics.Typeface
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
-import android.view.Gravity
-import android.view.View
-import android.widget.EditText
-import android.widget.FrameLayout
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
-import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.formulastudio.app.ui.theme.QuickTexTheme
 import com.formulastudio.app.util.Store
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/** 公式收藏与历史（含搜索 / 排序 / 清空） */
-class LibraryActivity : AppCompatActivity() {
-
-    private enum class Tab { FAVORITES, HISTORY }
-    private enum class SortMode { TIME_DESC, TIME_ASC, NAME }
-
-    private lateinit var content: LinearLayout
-    private lateinit var emptyView: TextView
-    private lateinit var searchInput: EditText
-    private lateinit var tabFav: TextView
-    private lateinit var tabHis: TextView
-
-    private var tab = Tab.FAVORITES
-    private var sortMode = SortMode.TIME_DESC
-    private var query = ""
-
-    private val primary: Int get() = ContextCompat.getColor(this, R.color.accent_blue)
-    private val ink: Int get() = ContextCompat.getColor(this, R.color.lib_text)
-    private val secondary: Int get() = ContextCompat.getColor(this, R.color.lib_text_secondary)
-    private val dividerColor: Int get() = ContextCompat.getColor(this, R.color.lib_divider)
-    private val chipBg: Int get() = ContextCompat.getColor(this, R.color.lib_chip_bg)
-    private val chipText: Int get() = ContextCompat.getColor(this, R.color.lib_chip_text)
+/**
+ * 收藏夹 / 历史（阶段 4.3：已迁移到 Compose）。
+ *
+ * 功能与旧版一致：Tab 切换、搜索、排序、单条删除、清空、点击「载入」回传公式。
+ */
+class LibraryActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        setTheme(com.formulastudio.app.util.Prefs.themeRes(this))
+        com.formulastudio.app.util.Prefs.applyDisplayMode(this)
+        com.formulastudio.app.util.Prefs.applyLanguage(this)
         super.onCreate(savedInstanceState)
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        buildUi()
-        rebuildList()
+        setContent {
+            QuickTexTheme {
+                LibraryScreen(onClose = { finish() },
+                    onLoad = {
+                        setResult(Activity.RESULT_OK, Intent().putExtra("latex", it))
+                        finish()
+                    })
+            }
+        }
+    }
+}
+
+private enum class LibTab { FAVORITES, HISTORY }
+private enum class LibSort { TIME_DESC, TIME_ASC, NAME }
+
+@Composable
+private fun LibraryScreen(onClose: () -> Unit, onLoad: (String) -> Unit) {
+    val ctx = LocalContext.current
+    var tab by remember { mutableStateOf(LibTab.FAVORITES) }
+    var sort by remember { mutableStateOf(LibSort.TIME_DESC) }
+    var query by remember { mutableStateOf("") }
+    var version by remember { mutableStateOf(0) }
+    var showClear by remember { mutableStateOf(false) }
+    var sortMenu by remember { mutableStateOf(false) }
+    val bump = { version++ }
+
+    val fmt = remember { SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()) }
+
+    val all = remember(tab, version) {
+        if (tab == LibTab.FAVORITES) Store.getFavorites(ctx) else Store.getHistory(ctx)
+    }
+    val entries = remember(all, query, sort) {
+        var list = all
+        if (query.isNotEmpty()) list = list.filter { it.latex.contains(query, ignoreCase = true) }
+        when (sort) {
+            LibSort.TIME_DESC -> list.sortedByDescending { it.time }
+            LibSort.TIME_ASC -> list.sortedBy { it.time }
+            LibSort.NAME -> list.sortedBy { it.latex.lowercase(Locale.getDefault()) }
+        }
     }
 
-    private fun buildUi() {
-        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-
-        // 让标题栏避开状态栏
-        ViewCompat.setOnApplyWindowInsetsListener(root) { v, ins ->
-            val bars = ins.getInsets(
-                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
-            )
-            v.setPadding(bars.left, bars.top, bars.right, 0)
-            ins
-        }
-
+    Column(Modifier.fillMaxSize()) {
         // ---------- 顶栏 ----------
-        val bar = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(4), dp(6), dp(4), dp(6))
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onClose) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+            }
+            Text(stringResource(R.string.library_title), style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.weight(1f))
+            TextButton(onClick = { showClear = true }) {
+                Text(stringResource(R.string.clear_all), color = MaterialTheme.colorScheme.primary)
+            }
         }
-        val back = TextView(this).apply {
-            text = "←"
-            textSize = 20f
-            setPadding(dp(12), dp(4), dp(16), dp(4))
-            setOnClickListener { finish() }
-        }
-        val title = TextView(this).apply {
-            text = getString(R.string.library_title)
-            textSize = 17f
-            setPadding(dp(2), dp(4), dp(12), dp(4))
-        }
-        val clearAll = TextView(this).apply {
-            text = getString(R.string.clear_all)
-            textSize = 14f
-            setTextColor(primary)
-            setPadding(dp(12), dp(4), dp(8), dp(4))
-            setOnClickListener { confirmClearAll() }
-        }
-        bar.addView(back)
-        bar.addView(title)
-        val space = View(this)
-        bar.addView(space, LinearLayout.LayoutParams(0, 1, 1f))
-        bar.addView(clearAll)
-        root.addView(bar)
 
         // ---------- Tab 行 ----------
-        val tabRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(dp(10), dp(4), dp(10), dp(4))
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            TabChip(stringResource(R.string.tab_favorites), tab == LibTab.FAVORITES) { tab = LibTab.FAVORITES }
+            TabChip(stringResource(R.string.tab_history), tab == LibTab.HISTORY) { tab = LibTab.HISTORY }
         }
-        tabFav = tabChip(getString(R.string.tab_favorites)) { switchTab(Tab.FAVORITES) }
-        tabHis = tabChip(getString(R.string.tab_history)) { switchTab(Tab.HISTORY) }
-        tabRow.addView(tabFav, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        tabRow.addView(tabHis, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        root.addView(tabRow)
 
         // ---------- 搜索 + 排序 ----------
-        val toolRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(10), dp(0), dp(10), dp(6))
-        }
-        searchInput = EditText(this).apply {
-            hint = getString(R.string.search_hint)
-            textSize = 14f
-            setSingleLine(true)
-            setTextColor(ink)
-            setHintTextColor(secondary)
-            background = null
-            setPadding(dp(10), dp(6), dp(10), dp(6))
-            addTextChangedListener(object : TextWatcher {
-                override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
-                override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
-                override fun afterTextChanged(s: Editable?) {
-                    query = s?.toString()?.trim() ?: ""
-                    rebuildList()
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                Modifier
+                    .weight(1f)
+                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(22.dp))
+                    .padding(horizontal = 14.dp, vertical = 8.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Search, null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    if (query.isEmpty()) {
+                        Text(stringResource(R.string.search_hint),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    BasicTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(
+                            color = MaterialTheme.colorScheme.onSurface
+                        ),
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
-            })
+            }
+            Box {
+                IconButton(onClick = { sortMenu = true }) {
+                    Icon(Icons.Filled.Sort, contentDescription = stringResource(R.string.sort))
+                }
+                DropdownMenu(expanded = sortMenu, onDismissRequest = { sortMenu = false }) {
+                    DropdownMenuItem(text = { Text(stringResource(R.string.sort_time_desc)) },
+                        onClick = { sort = LibSort.TIME_DESC; sortMenu = false })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.sort_time_asc)) },
+                        onClick = { sort = LibSort.TIME_ASC; sortMenu = false })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.sort_name)) },
+                        onClick = { sort = LibSort.NAME; sortMenu = false })
+                }
+            }
         }
-        val sortBtn = TextView(this).apply {
-            text = getString(R.string.sort)
-            textSize = 13f
-            setTextColor(primary)
-            setPadding(dp(10), dp(6), dp(4), dp(6))
-            setOnClickListener { showSortMenu() }
-        }
-        toolRow.addView(searchInput, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        toolRow.addView(sortBtn)
-        root.addView(toolRow)
 
         // ---------- 列表 ----------
-        content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        val scroll = ScrollView(this)
-        scroll.addView(
-            content,
-            FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT
+        if (entries.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(
+                    when {
+                        query.isNotEmpty() -> stringResource(R.string.no_match)
+                        tab == LibTab.FAVORITES -> stringResource(R.string.empty_favorites)
+                        else -> stringResource(R.string.empty_history)
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else {
+            LazyColumn(Modifier.fillMaxSize()) {
+                items(entries, key = { it.latex + it.time }) { e ->
+                    EntryCard(
+                        latex = e.latex,
+                        time = fmt.format(Date(e.time)),
+                        onLoad = { onLoad(e.latex) },
+                        onDelete = {
+                            if (tab == LibTab.FAVORITES) Store.removeFavorite(ctx, e.latex)
+                            else Store.removeHistory(ctx, e.latex)
+                            bump()
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    if (showClear) {
+        AlertDialog(
+            onDismissRequest = { showClear = false },
+            text = {
+                Text(
+                    if (tab == LibTab.FAVORITES) stringResource(R.string.clear_favorites_confirm)
+                    else stringResource(R.string.clear_history_confirm)
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (tab == LibTab.FAVORITES) Store.clearFavorites(ctx) else Store.clearHistory(ctx)
+                    showClear = false; bump()
+                }) { Text(stringResource(R.string.ok)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClear = false }) { Text(stringResource(R.string.cancel)) }
+            }
+        )
+    }
+}
+
+@Composable
+private fun TabChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(
+                if (selected) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.surfaceVariant
             )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Text(
+            label,
+            color = if (selected) MaterialTheme.colorScheme.onPrimary
+            else MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium
         )
-        root.addView(scroll, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
-
-        emptyView = TextView(this).apply {
-            gravity = Gravity.CENTER
-            textSize = 14f
-            setTextColor(secondary)
-            setPadding(dp(20), dp(40), dp(20), dp(40))
-        }
-        root.addView(emptyView)
-
-        setContentView(root)
     }
+}
 
-    private fun tabChip(label: String, onClick: () -> Unit): TextView {
-        return TextView(this).apply {
-            text = label
-            textSize = 14f
-            gravity = Gravity.CENTER
-            setPadding(dp(10), dp(6), dp(10), dp(6))
-            setOnClickListener { onClick() }
-        }
-    }
-
-    private fun switchTab(t: Tab) {
-        tab = t
-        updateTabStyles()
-        rebuildList()
-    }
-
-    private fun updateTabStyles() {
-        styleChip(tabFav, tab == Tab.FAVORITES)
-        styleChip(tabHis, tab == Tab.HISTORY)
-    }
-
-    private fun styleChip(chip: TextView, selected: Boolean) {
-        if (selected) {
-            chip.setTextColor(android.graphics.Color.WHITE)
-            chip.setBackgroundColor(primary)
-        } else {
-            chip.setTextColor(chipText)
-            chip.setBackgroundColor(chipBg)
-        }
-    }
-
-    private fun showSortMenu() {
-        val labels = arrayOf(
-            getString(R.string.sort_time_desc),
-            getString(R.string.sort_time_asc),
-            getString(R.string.sort_name)
-        )
-        AlertDialog.Builder(this)
-            .setTitle(R.string.sort)
-            .setItems(labels) { _, which ->
-                sortMode = SortMode.entries[which]
-                rebuildList()
+@Composable
+private fun EntryCard(latex: String, time: String, onLoad: () -> Unit, onDelete: () -> Unit) {
+    Column(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+            Text(latex, fontFamily = FontFamily.Monospace, fontSize = 14.sp,
+                maxLines = 2, overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurface)
+            Text(time, fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 2.dp))
+            Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(stringResource(R.string.load), color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.clickable(onClick = onLoad))
+                Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.clickable(onClick = onDelete))
             }
-            .show()
+        }
+        Box(Modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .background(MaterialTheme.colorScheme.surfaceVariant))
     }
-
-    private fun confirmClearAll() {
-        val msg = if (tab == Tab.FAVORITES) {
-            getString(R.string.clear_favorites_confirm)
-        } else {
-            getString(R.string.clear_history_confirm)
-        }
-        AlertDialog.Builder(this)
-            .setMessage(msg)
-            .setPositiveButton(R.string.ok) { _, _ ->
-                if (tab == Tab.FAVORITES) Store.clearFavorites(this) else Store.clearHistory(this)
-                rebuildList()
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
-    }
-
-    // ---------- 数据 ----------
-
-    private fun rawEntries(): List<Store.Entry> =
-        if (tab == Tab.FAVORITES) Store.getFavorites(this) else Store.getHistory(this)
-
-    private fun rebuildList() {
-        content.removeAllViews()
-
-        var entries = rawEntries()
-        if (query.isNotEmpty()) {
-            entries = entries.filter { it.latex.contains(query, ignoreCase = true) }
-        }
-        entries = when (sortMode) {
-            SortMode.TIME_DESC -> entries.sortedByDescending { it.time }
-            SortMode.TIME_ASC -> entries.sortedBy { it.time }
-            SortMode.NAME -> entries.sortedBy { it.latex.lowercase(Locale.getDefault()) }
-        }
-
-        emptyView.text = when {
-            query.isNotEmpty() -> getString(R.string.no_match)
-            tab == Tab.FAVORITES -> getString(R.string.empty_favorites)
-            else -> getString(R.string.empty_history)
-        }
-        emptyView.visibility = if (entries.isEmpty()) View.VISIBLE else View.GONE
-
-        val fmt = SimpleDateFormat("MM-dd HH:mm", Locale.getDefault())
-        entries.forEach { e ->
-            content.addView(itemView(e.latex, fmt.format(Date(e.time))))
-        }
-    }
-
-    private fun itemView(latex: String, time: String): View {
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(10), dp(14), dp(8))
-        }
-        val text = TextView(this).apply {
-            this.text = latex
-            textSize = 14f
-            typeface = Typeface.MONOSPACE
-            setTextColor(ink)
-        }
-        val timeRow = TextView(this).apply {
-            this.text = time
-            textSize = 11f
-            setTextColor(secondary)
-            setPadding(0, dp(2), 0, dp(4))
-        }
-        val btnRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        val load = actionButton(getString(R.string.load)) {
-            setResult(RESULT_OK, Intent().putExtra("latex", latex))
-            finish()
-        }
-        val del = actionButton(getString(R.string.delete)) {
-            if (tab == Tab.FAVORITES) {
-                Store.removeFavorite(this@LibraryActivity, latex)
-            } else {
-                Store.removeHistory(this@LibraryActivity, latex)
-            }
-            rebuildList()
-        }
-        btnRow.addView(load)
-        btnRow.addView(del)
-        card.addView(text)
-        card.addView(timeRow)
-        card.addView(btnRow)
-
-        val divider = View(this).apply { setBackgroundColor(dividerColor) }
-        val wrap = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        wrap.addView(card)
-        wrap.addView(divider, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1))
-        return wrap
-    }
-
-    private fun actionButton(label: String, onClick: () -> Unit): TextView {
-        return TextView(this).apply {
-            text = label
-            textSize = 13f
-            setTextColor(primary)
-            setPadding(dp(10), dp(3), dp(10), dp(3))
-            setOnClickListener { onClick() }
-        }
-    }
-
-    private fun dp(v: Int): Int =
-        (v * resources.displayMetrics.density).toInt()
 }
