@@ -1,5 +1,7 @@
 package com.formulastudio.app.doc
 
+import com.formulastudio.app.R
+
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -180,6 +182,27 @@ object DocExporter {
                     entry("word/media/$name", bos.toByteArray())
                 }
             }
+            f
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /** 导出 Excel：每行一个文本行，公式作为单元格内容（LaTeX 原文） */
+    fun toXlsx(context: Context, items: List<com.formulastudio.app.DocumentActivity.Item>): File? {
+        return try {
+            val rows = ArrayList<List<String>>()
+            for (it in items) {
+                if (it.isText) {
+                    for (line in it.text.split("\n")) rows.add(listOf(line))
+                } else {
+                    rows.add(listOf("[" + context.getString(R.string.formula) + "]"))
+                }
+            }
+            val data = com.formulastudio.core.export.XlsxExporter.build(rows, "QuickTex")
+            val f = File(File(context.cacheDir, "shared").apply { mkdirs() },
+                "document_${System.currentTimeMillis()}.xlsx")
+            f.writeBytes(data)
             f
         } catch (e: Exception) {
             null

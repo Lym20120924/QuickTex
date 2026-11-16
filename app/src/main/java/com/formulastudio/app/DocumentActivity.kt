@@ -162,20 +162,37 @@ class DocumentActivity : AppCompatActivity() {
         val items = arrayOf(
             getString(R.string.document_export_pdf),
             getString(R.string.document_export_docx),
-            getString(R.string.document_export_svg)
+            getString(R.string.document_export_xlsx),
+            getString(R.string.document_export_svg),
+            getString(R.string.open_pdf)
         )
         AlertDialog.Builder(this)
             .setItems(items) { _, which ->
                 when (which) {
                     0 -> exportVia { DocExporter.toPdf(this, items1()) }
                     1 -> exportVia { DocExporter.toDocx(this, items1()) }
-                    2 -> exportSvg()
+                    2 -> exportVia { DocExporter.toXlsx(this, items1()) }
+                    3 -> exportSvg()
+                    4 -> openPdf()
                 }
             }
             .show()
     }
 
     private fun items1() = items
+
+    /** 把文档导出成 PDF 并打开系统 PDF 查看器（应用内 PdfRenderer） */
+    private fun openPdf() {
+        toast(R.string.document_rendering)
+        Thread {
+            val f = DocExporter.toPdf(this, items1())
+            runOnUiThread {
+                if (f == null) { toast(R.string.document_export_failed); return@runOnUiThread }
+                startActivity(android.content.Intent(this, com.formulastudio.app.pdf.PdfViewerActivity::class.java)
+                    .putExtra(com.formulastudio.app.pdf.PdfViewerActivity.EXTRA_PATH, f.absolutePath))
+            }
+        }.start()
+    }
 
     /** 导出文件并调起系统分享 */
     private fun exportVia(block: () -> java.io.File?) {
@@ -192,6 +209,7 @@ class DocumentActivity : AppCompatActivity() {
                         type = when {
                             f.name.endsWith(".pdf") -> "application/pdf"
                             f.name.endsWith(".docx") -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            f.name.endsWith(".xlsx") -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                             else -> "image/svg+xml"
                         }
                         putExtra(android.content.Intent.EXTRA_STREAM, uri)

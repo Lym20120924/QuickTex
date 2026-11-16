@@ -133,7 +133,14 @@
     <string name="document_title">LaTeX 文档</string>
     <string name="document_input_hint">粘贴 LaTeX 源码（支持 \\[ \\]、$...$、align、tikz、pgfplots）</string>
     <string name="document_render">渲染</string>
+    <string name="formula">公式</string>
     <string name="document_export">导出</string>
+    <string name="document_export_xlsx">导出 Excel</string>
+    <string name="pdf_viewer_title">PDF 查看</string>
+    <string name="pdf_prev">上一页</string>
+    <string name="pdf_next">下一页</string>
+    <string name="pdf_page">PDF 页面</string>
+    <string name="open_pdf">查看 PDF</string>
     <string name="document_export_pdf">导出 PDF</string>
     <string name="document_export_docx">导出 Word</string>
     <string name="document_export_svg">导出 SVG</string>

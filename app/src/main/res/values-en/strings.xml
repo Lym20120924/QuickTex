@@ -133,7 +133,14 @@
     <string name="document_title">LaTeX document</string>
     <string name="document_input_hint">Paste LaTeX source (supports \\[ \\], $...$, align, tikz, pgfplots)</string>
     <string name="document_render">Render</string>
+    <string name="formula">Formula</string>
     <string name="document_export">Export</string>
+    <string name="document_export_xlsx">Export Excel</string>
+    <string name="pdf_viewer_title">PDF Viewer</string>
+    <string name="pdf_prev">Previous</string>
+    <string name="pdf_next">Next</string>
+    <string name="pdf_page">PDF page</string>
+    <string name="open_pdf">View PDF</string>
     <string name="document_export_pdf">Export PDF</string>
     <string name="document_export_docx">Export Word</string>
     <string name="document_export_svg">Export SVG</string>

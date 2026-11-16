@@ -73,12 +73,13 @@ app/src/main/java/com/formulastudio/app/
 │   ├── SvgTarget.kt         SVG 后端（内嵌 KaTeX 字体）
 │   ├── PdfTarget.kt         PDF 后端
 │   ├── PaintAdapters.kt     Paint → TextStyle / Ink
+│   ├── pdf/PdfViewerActivity.kt  PDF 离线查看
 │   └── FontFaces.kt         字体 CSS 生成
 ├── doc/
 │   ├── LatexDocument.kt     整份 .tex → 文本 / 公式 / 图形块
 │   ├── FigureRenderer.kt    TikZ / pgfplots 渲染
 │   ├── BlockRenderer.kt     块 → PNG / SVG
-│   └── DocExporter.kt       导出 PDF / Word
+│   └── DocExporter.kt       导出 PDF / Word / Excel
 ├── keyboard/                符号键盘（9 大分类）
 └── util/                    设置 / 收藏 / 历史
 ```
@@ -116,7 +117,8 @@ keytool -genkeypair -v -keystore keystore/quicktex-release.jks \
 - ⌨️ **9 大符号键盘**：基础 · 集合 · 关系 · 大运算 · 希腊 · 分析 · 矩阵 · 上下标 · 系统键盘
 - 🔁 **双向同步**：代码框可手改 LaTeX，图形与预览实时联动
 - 👆 **点哪去哪**：点虚线占位框或预览对应位置，光标即刻定位
-- 🖼️ **导出 PNG / SVG / PDF / Word**：PDF 与 Word 零第三方依赖
+- 🖼️ **导出 PNG / SVG / PDF / Word / Excel**：全部零第三方依赖
+- 📄 **PDF 查看**：系统 PdfRenderer，离线翻页
 - 📄 **LaTeX 文档渲染**：整份 `.tex` 逐块渲染，支持 TikZ / pgfplots
 - ⭐ **收藏 & 历史**：搜索、排序、清空
 - 🌙 **深色模式** · 🌍 **中英双语** · ↩️ **撤销重做** · 💾 **自动保存**

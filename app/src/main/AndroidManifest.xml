@@ -46,6 +46,10 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-    </application>
+        <activity
+        android:name=".pdf.PdfViewerActivity"
+        android:exported="false"
+        android:label="@string/pdf_viewer_title" />
+</application>
 
 </manifest>
