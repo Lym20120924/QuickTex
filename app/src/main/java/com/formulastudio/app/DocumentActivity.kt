@@ -344,6 +344,7 @@ private fun DocumentScreen(initial: String, onClose: () -> Unit) {
             R.string.document_export_pdf to { export({ DocExporter.toPdf(ctx, items) }, ".pdf", "application/pdf", R.string.document_export) },
             R.string.document_export_docx to { export({ DocExporter.toDocx(ctx, items) }, ".docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", R.string.document_export) },
             R.string.document_export_xlsx to { export({ DocExporter.toXlsx(ctx, items) }, ".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", R.string.document_export) },
+            R.string.document_export_md to { export({ DocExporter.toMarkdown(ctx, items) }, ".md", "text/markdown", R.string.document_export) },
             R.string.document_export_svg to { showExport = false; exportSvg() },
             R.string.open_pdf to { showExport = false; openPdf() }
         )

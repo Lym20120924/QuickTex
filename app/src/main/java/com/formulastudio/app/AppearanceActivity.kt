@@ -23,7 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Wallpaper
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -104,7 +104,7 @@ private fun AppearanceScreen(onRestart: () -> Unit) {
 
         // 3. 配色
         SectionHeader(string(R.string.section_color))
-        ClickRow(icon = { Icon(Icons.Filled.Wallpaper, null, tint = MaterialTheme.colorScheme.primary) },
+        ClickRow(icon = { Icon(Icons.Filled.Settings, null, tint = MaterialTheme.colorScheme.primary) },
             title = string(R.string.color_wallpaper),
             status = string(R.string.color_wallpaper_status)) { showColorStyle = true }
 

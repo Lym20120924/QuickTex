@@ -138,6 +138,7 @@
     <string name="design_system_title">Design System</string>
     <string name="document_export">Export</string>
     <string name="document_export_xlsx">Export Excel</string>
+    <string name="document_export_md">Export Markdown</string>
     <string name="pdf_viewer_title">PDF Viewer</string>
     <string name="pdf_prev">Previous</string>
     <string name="pdf_next">Next</string>

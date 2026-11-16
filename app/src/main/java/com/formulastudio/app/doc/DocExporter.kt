@@ -209,6 +209,30 @@ object DocExporter {
         }
     }
 
+    /**
+     * 导出 Markdown：文字段落 + 公式（`$...$` / `$$...$$`）。
+     * 公式保留 LaTeX 原文，可在任何 Markdown 渲染器（含 KaTeX/MathJax）中显示。
+     */
+    fun toMarkdown(context: Context, items: List<com.formulastudio.app.DocumentActivity.Item>): File? {
+        return try {
+            val sb = StringBuilder()
+            for (it in items) {
+                if (it.isText) {
+                    if (it.text.isNotBlank()) sb.append(it.text.trim()).append("\n\n")
+                } else {
+                    val tex = it.text.trim()
+                    if (tex.isNotEmpty()) sb.append("$$\n").append(tex).append("\n$$\n\n")
+                }
+            }
+            val f = File(File(context.cacheDir, "shared").apply { mkdirs() },
+                "document_${System.currentTimeMillis()}.md")
+            f.writeText(sb.toString(), Charsets.UTF_8)
+            f
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     private fun esc(s: String): String =
         s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 }
