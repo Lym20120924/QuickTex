@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
@@ -48,7 +49,7 @@ class FormulaEditorComposeActivity : ComponentActivity() {
 
 @Composable
 private fun EditorScreen(onClose: () -> Unit) {
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().statusBarsPadding()) {
         Surface(shadowElevation = 2.dp) {
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 6.dp),
