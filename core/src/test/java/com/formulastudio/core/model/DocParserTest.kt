@@ -66,4 +66,27 @@ class OmmlTest {
     fun `无法解析时返回 null 以便回退位图`() {
         assertTrue(Omml.convert("") == null)
     }
+
+    @Test
+    fun `大型运算符带上下限`() {
+        val m = Omml.convert("\\sum_{i=1}^{n} i")!!
+        assertTrue(m.contains("<m:nary>"))
+        assertTrue(m.contains("<m:chr m:val=\"∑\""))
+        assertTrue(m.contains("<m:sub>"))
+        assertTrue(m.contains("<m:sup>"))
+    }
+
+    @Test
+    fun `矩阵与 cases`() {
+        val mat = Omml.convert("\\begin{matrix} a & b \\\\ c & d \\end{matrix}")!!
+        assertTrue(mat.contains("<m:m>"))
+        assertTrue(mat.contains("<m:mr>"))
+        val cs = Omml.convert("\\begin{cases} a & x>0 \\\\ b & x<0 \\end{cases}")!!
+        assertTrue(cs.contains("<m:eqArr>"))
+    }
+
+    @Test
+    fun `重音符号`() {
+        assertTrue(Omml.convert("\\hat{x}")!!.contains("<m:acc>"))
+    }
 }

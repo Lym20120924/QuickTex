@@ -10,6 +10,12 @@ package com.formulastudio.core.export
 object Omml {
 
     fun convert(latex: String): String? = try {
+        // 优先走解析树（覆盖全部节点类型）
+        runCatching {
+            val g = com.formulastudio.app.editor.LatexParser().parse(latex)
+            val out = ommlFromNodes(g.nodes)
+            if (out.isNotBlank()) return out
+        }
         val p = Parser(latex)
         val body = p.parseExpr(null)
         if (p.pos < p.src.length && p.src[p.pos] !in "}\\") null
@@ -187,4 +193,143 @@ object Omml {
         "Sigma" -> "Σ"; "Phi" -> "Φ"; "Omega" -> "Ω"
         else -> name
     }
+}
+
+// ===================== 基于解析树的完整转换 =====================
+
+/**
+ * 把 [com.formulastudio.app.editor.MathNode] 树转成完整 OMML。
+ *
+ * 覆盖编辑器的全部节点类型：分组 / 文本 / 换行 / 命令 / 原始 LaTeX /
+ * 分数 / 根式 / 上下标 / 大型运算符 / 函数 / 括号 / 矩阵 / cases / 重音 / 化学式。
+ */
+fun ommlFromNodes(nodes: List<com.formulastudio.app.editor.MathNode>): String =
+    nodes.joinToString("") { ommlNode(it) }
+
+private fun ommlGroup(g: com.formulastudio.app.editor.MathNode.Group): String =
+    g.nodes.joinToString("") { ommlNode(it) }
+
+private fun ommlNode(n: com.formulastudio.app.editor.MathNode): String = when (n) {
+    is com.formulastudio.app.editor.MathNode.Group -> ommlGroup(n)
+    is com.formulastudio.app.editor.MathNode.Text -> ommlRun(n.text)
+    is com.formulastudio.app.editor.MathNode.NewLine -> "<m:r><m:br/></m:r>"
+    is com.formulastudio.app.editor.MathNode.Raw -> ommlRun(n.latex)
+    is com.formulastudio.app.editor.MathNode.Cmd -> ommlRun(cmdSymbol(n.latex))
+    is com.formulastudio.app.editor.MathNode.Func -> ommlRun(n.name)
+    is com.formulastudio.app.editor.MathNode.Chem -> ommlRun(n.text)
+    is com.formulastudio.app.editor.MathNode.Fraction ->
+        "<m:f><m:num>${ommlGroup(n.num)}</m:num><m:den>${ommlGroup(n.den)}</m:den></m:f>"
+    is com.formulastudio.app.editor.MathNode.Sqrt -> {
+        val deg = n.degree
+        if (deg != null && deg.nodes.isNotEmpty()) {
+            "<m:rad><m:radPr><m:degHide m:val=\"0\"/></m:radPr>" +
+                "<m:deg>${ommlGroup(deg)}</m:deg><m:e>${ommlGroup(n.radicand)}</m:e></m:rad>"
+        } else {
+            "<m:rad><m:radPr><m:degHide m:val=\"1\"/></m:radPr>" +
+                "<m:deg/><m:e>${ommlGroup(n.radicand)}</m:e></m:rad>"
+        }
+    }
+    is com.formulastudio.app.editor.MathNode.Script -> when {
+        n.sup != null && n.sub != null ->
+            "<m:sSubSup><m:e>${ommlNode(n.base)}</m:e>" +
+                "<m:sub>${ommlGroup(n.sub!!)}</m:sub><m:sup>${ommlGroup(n.sup!!)}</m:sup></m:sSubSup>"
+        n.sup != null ->
+            "<m:sSup><m:e>${ommlNode(n.base)}</m:e><m:sup>${ommlGroup(n.sup!!)}</m:sup></m:sSup>"
+        n.sub != null ->
+            "<m:sSub><m:e>${ommlNode(n.base)}</m:e><m:sub>${ommlGroup(n.sub!!)}</m:sub></m:sSub>"
+        else -> ommlNode(n.base)
+    }
+    is com.formulastudio.app.editor.MathNode.Op -> {
+        val under = n.under
+        val over = n.over
+        if (under == null && over == null) {
+            ommlRun(cmdSymbol(n.latex))
+        } else {
+            val chr = naryChar(n.latex)
+            val sb = StringBuilder("<m:nary><m:naryPr><m:chr m:val=\"").append(chr)
+                .append("\"/><m:limLoc m:val=\"undOvr\"/>")
+            if (over == null) sb.append("<m:supHide m:val=\"1\"/>")
+            if (under == null) sb.append("<m:subHide m:val=\"1\"/>")
+            sb.append("</m:naryPr>")
+            if (under != null) sb.append("<m:sub>").append(ommlGroup(under)).append("</m:sub>")
+            if (over != null) sb.append("<m:sup>").append(ommlGroup(over)).append("</m:sup>")
+            sb.append("<m:e><m:r><m:t xml:space=\"preserve\"> </m:t></m:r></m:e></m:nary>")
+            sb.toString()
+        }
+    }
+    is com.formulastudio.app.editor.MathNode.Paren ->
+        ommlRun(n.left) + ommlGroup(n.inner) + ommlRun(n.right)
+    is com.formulastudio.app.editor.MathNode.Matrix -> {
+        val sb = StringBuilder("<m:m><m:mPr><m:mcs><m:mc><m:mcJc m:val=\"center\"/></mc></m:mcs></m:mPr>")
+        for (row in n.rows) {
+            sb.append("<m:mr>")
+            for (cell in row) sb.append("<m:e>").append(ommlGroup(cell)).append("</m:e>")
+            sb.append("</m:mr>")
+        }
+        sb.append("</m:m>")
+        sb.toString()
+    }
+    is com.formulastudio.app.editor.MathNode.Cases -> {
+        val sb = StringBuilder("<m:d><m:dPr><m:begChr m:val=\"{\"/><m:endChr m:val=\"\"/></m:dPr><m:e>")
+        sb.append("<m:eqArr><m:eqArrPr><m:maxDist m:val=\"1\"/></m:eqArrPr>")
+        for (row in n.rows) sb.append("<m:e>").append(ommlGroup(row)).append("</m:e>")
+        sb.append("</m:eqArr></m:e></m:d>")
+        sb.toString()
+    }
+    is com.formulastudio.app.editor.MathNode.Accent ->
+        "<m:acc><m:accPr><m:chr m:val=\"${accentChar(n.accent)}\"/></m:accPr>" +
+            "<m:e>${ommlGroup(n.base)}</m:e></m:acc>"
+}
+
+private fun ommlRun(text: String): String =
+    if (text.isEmpty()) "" else "<m:r><m:t xml:space=\"preserve\">${ommlEsc(text)}</m:t></m:r>"
+
+private fun ommlEsc(s: String): String =
+    s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+private fun cmdSymbol(latex: String): String {
+    val name = latex.removePrefix("\\").substringBefore(' ')
+    return when (name) {
+        "alpha" -> "α"; "beta" -> "β"; "gamma" -> "γ"; "delta" -> "δ"; "epsilon", "varepsilon" -> "ε"
+        "zeta" -> "ζ"; "eta" -> "η"; "theta" -> "θ"; "iota" -> "ι"; "kappa" -> "κ"
+        "lambda" -> "λ"; "mu" -> "μ"; "nu" -> "ν"; "xi" -> "ξ"; "pi" -> "π"; "rho" -> "ρ"
+        "sigma" -> "σ"; "tau" -> "τ"; "upsilon" -> "υ"; "phi", "varphi" -> "φ"; "chi" -> "χ"
+        "psi" -> "ψ"; "omega" -> "ω"
+        "Gamma" -> "Γ"; "Delta" -> "Δ"; "Theta" -> "Θ"; "Lambda" -> "Λ"; "Xi" -> "Ξ"
+        "Pi" -> "Π"; "Sigma" -> "Σ"; "Upsilon" -> "Υ"; "Phi" -> "Φ"; "Psi" -> "Ψ"; "Omega" -> "Ω"
+        "cdot", "centerdot" -> "·"; "times" -> "×"; "div" -> "÷"; "pm" -> "±"; "mp" -> "∓"
+        "ast" -> "∗"; "star" -> "⋆"; "circ" -> "∘"; "bullet" -> "∙"
+        "le", "leq" -> "≤"; "ge", "geq" -> "≥"; "ne", "neq" -> "≠"; "approx" -> "≈"
+        "equiv" -> "≡"; "sim" -> "∼"; "simeq" -> "≃"; "cong" -> "≅"; "propto" -> "∝"
+        "infty" -> "∞"; "partial" -> "∂"; "nabla" -> "∇"; "forall" -> "∀"; "exists" -> "∃"
+        "in" -> "∈"; "notin" -> "∉"; "subset" -> "⊂"; "supset" -> "⊃"; "subseteq" -> "⊆"
+        "supseteq" -> "⊇"; "cup" -> "∪"; "cap" -> "∩"; "emptyset", "varnothing" -> "∅"
+        "to" -> "→"; "rightarrow" -> "→"; "leftarrow" -> "←"; "Rightarrow" -> "⇒"
+        "Leftarrow" -> "⇐"; "leftrightarrow" -> "↔"; "mapsto" -> "↦"
+        "int" -> "∫"; "oint" -> "∮"; "sum" -> "∑"; "prod" -> "∏"; "bigcup" -> "⋃"; "bigcap" -> "⋂"
+        "lim" -> "lim"; "sin" -> "sin"; "cos" -> "cos"; "tan" -> "tan"; "log" -> "log"
+        "ln" -> "ln"; "exp" -> "exp"; "max" -> "max"; "min" -> "min"
+        "pm" -> "±"; "lt" -> "<"; "gt" -> ">"
+        else -> latex
+    }
+}
+
+private fun naryChar(latex: String): String = when (latex.removePrefix("\\")) {
+    "sum" -> "∑"; "prod" -> "∏"; "int" -> "∫"; "oint" -> "∮"
+    "bigcup" -> "⋃"; "bigcap" -> "⋂"; "coprod" -> "∐"
+    else -> "∑"
+}
+
+private fun accentChar(accent: String): String = when {
+    accent.contains("hat") || accent.contains("^\\^") -> "^"
+    accent.contains("bar") -> "̄"
+    accent.contains("vec") -> "⃗"
+    accent.contains("dot") -> "̇"
+    accent.contains("ddot") -> "̈"
+    accent.contains("tilde") -> "̃"
+    accent.contains("check") -> "̌"
+    accent.contains("breve") -> "̆"
+    accent.contains("acute") -> "́"
+    accent.contains("grave") -> "̀"
+    else -> "^"
 }
