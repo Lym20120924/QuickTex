@@ -135,6 +135,9 @@
     <string name="document_render">Render</string>
     <string name="formula">Formula</string>
     <string name="title_compose_editor">Compose Formula Editor</string>
+    <string name="docx_viewer_title">Word Document</string>
+    <string name="docx_empty">Cannot read this document (corrupted or unsupported)</string>
+    <string name="import_docx">Import Word</string>
     <string name="design_system_title">Design System</string>
     <string name="document_export">Export</string>
     <string name="document_export_xlsx">Export Excel</string>
@@ -186,4 +189,7 @@
     <string name="exporting_svg">Generating SVG…</string>
     <string name="export_svg_ready">SVG generated — choose where to save</string>
     <string name="export_svg_failed">SVG export failed</string>
+
+    <string name="docx_title">Word Document</string>
+    <string name="docx_parse_failed">Cannot parse this file</string>
 </resources>

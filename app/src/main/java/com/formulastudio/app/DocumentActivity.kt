@@ -95,6 +95,16 @@ private fun DocumentScreen(initial: String, onClose: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("") }
     var showExport by remember { mutableStateOf(false) }
+    /** 打开 docx 查看器 */
+    fun openDocx(uri: android.net.Uri) {
+        ctx.startActivity(Intent(ctx, com.formulastudio.app.docx.DocxViewerActivity::class.java)
+            .setData(uri)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+    }
+
+    val importLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
+    ) { u -> if (u != null) openDocx(u) }
 
     /** 渲染：解析放后台，位图必须在主线程创建 */
     fun render() {
@@ -261,6 +271,7 @@ private fun DocumentScreen(initial: String, onClose: () -> Unit) {
                 Spacer(Modifier.weight(1f))
                 TextButton(onClick = { render() }) { Text(stringResource(R.string.document_render)) }
                 TextButton(onClick = { showExport = true }) { Text(stringResource(R.string.document_export)) }
+                TextButton(onClick = { importLauncher.launch(arrayOf("application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/octet-stream")) }) { Text(stringResource(R.string.import_docx)) }
                 TextButton(onClick = { copyAll() }) { Text(stringResource(R.string.document_copy)) }
             }
         }

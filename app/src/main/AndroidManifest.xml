@@ -58,6 +58,22 @@
         android:name=".ui.FormulaEditorComposeActivity"
         android:exported="false"
         android:label="@string/title_compose_editor" />
+    <activity
+        android:name=".docx.DocxViewerActivity"
+        android:exported="true"
+        android:label="@string/docx_viewer_title">
+        <intent-filter>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <data android:mimeType="application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+        </intent-filter>
+        <intent-filter>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="content" android:host="*" android:pathPattern=".*\.docx" />
+        </intent-filter>
+    </activity>
 </application>
 
 </manifest>

@@ -135,6 +135,9 @@
     <string name="document_render">渲染</string>
     <string name="formula">公式</string>
     <string name="title_compose_editor">Compose 公式编辑器</string>
+    <string name="docx_viewer_title">Word 文档</string>
+    <string name="docx_empty">无法读取该文档（可能已损坏或格式不受支持）</string>
+    <string name="import_docx">导入 Word</string>
     <string name="design_system_title">设计系统</string>
     <string name="document_export">导出</string>
     <string name="document_export_xlsx">导出 Excel</string>
@@ -186,4 +189,7 @@
     <string name="exporting_svg">正在生成 SVG…</string>
     <string name="export_svg_ready">SVG 已生成，请选择保存位置</string>
     <string name="export_svg_failed">SVG 导出失败</string>
+
+    <string name="docx_title">Word 文档</string>
+    <string name="docx_parse_failed">无法解析该文件</string>
 </resources>
