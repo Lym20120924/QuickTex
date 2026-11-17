@@ -309,7 +309,7 @@ class MainActivity : AppCompatActivity() {
             .setMessage(getString(R.string.about_message))
             .setPositiveButton(R.string.copy_link) { _, _ ->
                 val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                cm.setPrimaryClip(ClipData.newPlainText("url", "https://github.com/37-7/QuickTex"))
+                cm.setPrimaryClip(ClipData.newPlainText("url", "https://github.com/Lym20120924/QuickTex"))
                 toast(R.string.copied)
             }
             .setNegativeButton(R.string.close, null)

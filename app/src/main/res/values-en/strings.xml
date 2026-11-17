@@ -8,7 +8,7 @@
     <string name="favorite">Favorite</string>
     <string name="favorite_library">Library</string>
     <string name="about">About</string>
-    <string name="about_message">Visual LaTeX formula editor\n\nGitHub:\nhttps://github.com/37-7/QuickTex\n\nTap the button below to copy the link</string>
+    <string name="about_message">Visual LaTeX formula editor\n\nGitHub:\nhttps://github.com/Lym20120924/QuickTex\n\nTap the button below to copy the link</string>
     <string name="copy_link">Copy link</string>
     <string name="close">Close</string>
     <string name="favorited">Added to favorites</string>
