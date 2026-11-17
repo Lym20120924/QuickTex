@@ -8,7 +8,12 @@ data class TextStyle(
     val size: Float,
     val color: Int,
     val italic: Boolean = false,
-    val family: String = "KaTeX_Main,KaTeX_AMS,serif"
+    val family: String = "KaTeX_Main,KaTeX_AMS,serif",
+    /**
+     * 字体标识（"main" / "var" / "op" / "cjk" / "mono"）。
+     * 与平台无关，仅用于让各后端选回正确的字体，保证度量与绘制一致。
+     */
+    val fontId: String = "main"
 )
 
 /** 平台无关的描边 / 填充描述 */

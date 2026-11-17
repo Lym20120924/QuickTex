@@ -18,6 +18,14 @@ internal fun Paint.textStyle(): TextStyle = TextStyle(
         else -> "KaTeX_Main,KaTeX_AMS,KaTeX_Size1,KaTeX_Size2,KaTeX_Size3," +
             "KaTeX_Size4,KaTeX_Caligraphic,KaTeX_Script,KaTeX_Fraktur," +
             "KaTeX_Typewriter,serif"
+    },
+    // 精确标记字体，保证 TextMeasurer 选回同一字体（度量才和原来一致）
+    fontId = when (typeface) {
+        AppFonts.main -> "main"
+        AppFonts.varFont -> "var"
+        AppFonts.op -> "op"
+        AppFonts.cjk -> "cjk"
+        else -> if (typeface === Typeface.MONOSPACE) "mono" else "main"
     }
 )
 
@@ -31,13 +39,12 @@ internal fun Paint.ink(): Ink = Ink(
  * 把平台无关的 TextStyle 映射回 KaTeX 字体，
  * 保证 Canvas 后端与编辑器视觉完全一致。
  */
-internal fun typefaceFor(res: Resources, style: TextStyle): Typeface {
-    if (style.family.startsWith("monospace")) return Typeface.MONOSPACE
-    val id = if (style.italic) R.font.katex_math_var else R.font.katex_math
-    return try {
-        res.getFont(id)
-    } catch (e: Throwable) {
-        if (style.italic) Typeface.create("serif", Typeface.ITALIC)
-        else Typeface.create("serif", Typeface.NORMAL)
-    }
+internal fun typefaceFor(res: Resources, style: TextStyle): Typeface = when (style.fontId) {
+    "var" -> AppFonts.varFont
+    "op" -> try {
+        res.getFont(R.font.katex_op)
+    } catch (e: Throwable) { AppFonts.main }
+    "cjk" -> AppFonts.cjk
+    "mono" -> Typeface.MONOSPACE
+    else -> AppFonts.main
 }

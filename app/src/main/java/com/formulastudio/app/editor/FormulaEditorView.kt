@@ -1,5 +1,6 @@
 package com.formulastudio.app.editor
 
+import com.formulastudio.app.render.AndroidTextMeasurer
 import com.formulastudio.app.render.CanvasTarget
 import com.formulastudio.app.render.SvgTarget
 import com.formulastudio.app.render.ink
@@ -174,6 +175,11 @@ class FormulaEditorView @JvmOverloads constructor(
         color = rawColor
     }
 
+    init {
+        // 注册字体供 PaintAdapters / TextMeasurer 识别（阶段 4.4a）
+        com.formulastudio.app.render.AppFonts.register(mainFont, varFont, opFont, cjkPaint.typeface)
+    }
+
     // ---------- 布局结果 ----------
 
     class LayoutBox(
@@ -257,26 +263,22 @@ class FormulaEditorView @JvmOverloads constructor(
 
     // ---------- 布局 ----------
 
+    /** 文字度量统一走 [TextMeasurer]（阶段 4.4a 接缝），保证与渲染后端同源 */
+    private val measurer = AndroidTextMeasurer(resources)
+
     private fun measureText(paint: Paint, text: String, sz: Float): Float {
         paint.textSize = sz
-        return paint.measureText(text)
+        return measurer.measure(text, sz, paint.textStyle())
     }
 
-    private fun lineHeight(sz: Float): Float {
-        textPaint.textSize = sz
-        val fm = textPaint.fontMetrics
-        return fm.descent - fm.ascent
-    }
+    private fun lineHeight(sz: Float): Float =
+        measurer.lineHeight(sz, textPaint.textStyle())
 
-    private fun ascent(sz: Float): Float {
-        textPaint.textSize = sz
-        return -textPaint.fontMetrics.ascent
-    }
+    private fun ascent(sz: Float): Float =
+        measurer.ascent(sz, textPaint.textStyle())
 
-    private fun descent(sz: Float): Float {
-        textPaint.textSize = sz
-        return textPaint.fontMetrics.descent
-    }
+    private fun descent(sz: Float): Float =
+        measurer.descent(sz, textPaint.textStyle())
 
     // ---------- 文本分段渲染（中文/函数名/斜体变量） ----------
 
