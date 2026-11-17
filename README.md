@@ -15,7 +15,7 @@
 
 | 公式编辑 | 外观设置中心 | docx 导入 |
 |---|---|---|
-| ![](screenshots/v4_2_editor_small.jpg) | ![](screenshots/v4_1_docx_dark_small.jpg) | ![](screenshots/v4_3_docx.png) |
+| ![](screenshots/v4_2_editor_small.jpg) | ![](screenshots/v4_2_appearance_small.jpg) | ![](screenshots/v4_3_docx_small.jpg) |
 
 ---
 
