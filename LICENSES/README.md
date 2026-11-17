@@ -9,9 +9,9 @@ QuickTex 的许可证文件放在**仓库根目录**（GitHub 只识别根目录
 
 | 文件 | 许可证 | 适用于 |
 |---|---|---|
-| [`LICENSE-GPL-2.0.txt`](../LICENSE-GPL-2.0.txt) | GNU General Public License v2.0 | 目前**未使用** GPL-2.0 组件，文本备用（若将来引入 GPL-2.0 组件可直接引用） |
-| [`LICENSE-Apache-2.0.txt`](../LICENSE-Apache-2.0.txt) | Apache License 2.0 | Android 依赖库：`androidx.core` / `appcompat` / `constraintlayout` / `recyclerview`、`com.google.android.material`、Jetpack Compose（`androidx.compose.*`） |
-| [`LICENSE-OFL-1.1.txt`](../LICENSE-OFL-1.1.txt) | SIL Open Font License 1.1 | 字体文件。随附的 KaTeX 字体来自 [KaTeX](https://github.com/KaTeX/KaTeX) 项目（MIT），若后续引入 OFL 授权的字体将按本许可证声明 |
+| [`LICENSE-GPL-2.0`](../LICENSE-GPL-2.0) | GNU General Public License v2.0 | 目前**未使用** GPL-2.0 组件，文本备用（若将来引入 GPL-2.0 组件可直接引用） |
+| [`LICENSE-Apache-2.0`](../LICENSE-Apache-2.0) | Apache License 2.0 | Android 依赖库：`androidx.core` / `appcompat` / `constraintlayout` / `recyclerview`、`com.google.android.material`、Jetpack Compose（`androidx.compose.*`） |
+| [`LICENSE-OFL-1.1`](../LICENSE-OFL-1.1) | SIL Open Font License 1.1 | 字体文件。随附的 KaTeX 字体来自 [KaTeX](https://github.com/KaTeX/KaTeX) 项目（MIT），若后续引入 OFL 授权的字体将按本许可证声明 |
 
 ## 文本来源
 
