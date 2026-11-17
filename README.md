@@ -179,9 +179,12 @@ keytool -genkeypair -v -keystore keystore/quicktex-release.jks \
 
 ## 📄 开源协议
 
-- 本应用源码：MIT License（见 LICENSE）
+- **项目源码：MIT License**（见 [LICENSE](LICENSE)）
+- Android 依赖库（androidx / Material / Compose）：Apache License 2.0
 - KaTeX 字体 / 代码：MIT License
 - Material Icons：Apache License 2.0
+
+第三方组件的许可证**官方原文**收录在 [LICENSES/](LICENSES/)，说明见 [LICENSES/README.md](LICENSES/README.md)。
 
 ---
 
