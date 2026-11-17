@@ -1399,7 +1399,10 @@ class FormulaEditorView @JvmOverloads constructor(
     }
 
     /** 把当前公式画到一张白底位图上（用于导出 PNG，公式居中带留白） */
-    fun renderToBitmap(scale: Float = 3f): android.graphics.Bitmap? {
+    fun renderToBitmap(
+        scale: Float = 3f,
+        background: Int = android.graphics.Color.WHITE
+    ): android.graphics.Bitmap? {
         if (formula.root.nodes.isEmpty()) return null
         relayout()
         val l = layoutRoot ?: return null
@@ -1414,7 +1417,7 @@ class FormulaEditorView @JvmOverloads constructor(
         h = (h * s).toInt().coerceAtLeast(1)
         val bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
-        c.drawColor(android.graphics.Color.WHITE)
+        c.drawColor(background)
         // 内容水平/垂直居中
         val ox = (w - l.w * s) / 2f
         val oy = (h - l.h * s) / 2f

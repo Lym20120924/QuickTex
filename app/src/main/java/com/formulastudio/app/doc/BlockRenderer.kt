@@ -23,16 +23,27 @@ object BlockRenderer {
     private fun lightContext(context: Context): Context =
         ContextThemeWrapper(context, R.style.Theme_FormulaStudio_Light)
 
-    /** 公式位图：自研排版引擎（纯 Canvas，无 WebView），白底黑字 */
-    fun mathBitmap(context: Context, latex: String, inline: Boolean): Bitmap? {
+    /**
+     * 公式位图：自研排版引擎（纯 Canvas，无 WebView）。
+     *
+     * @param background 位图背景色（默认白底，导出用）；传 0 则透明
+     * @param inkColor   墨色（默认黑色）
+     */
+    fun mathBitmap(
+        context: Context,
+        latex: String,
+        inline: Boolean,
+        background: Int = Color.WHITE,
+        inkColor: Int = Color.BLACK
+    ): Bitmap? {
         return try {
             val c = lightContext(context)
             val v = FormulaEditorView(c)
-            v.applySettings(Prefs.fontScale(c), false, Color.BLACK)
+            v.applySettings(Prefs.fontScale(c), false, inkColor)
             v.loadLatex(latex.replace("&", " "))
             val target = if (inline) 110f else 165f
             val s = (target / v.baseSizePx()).coerceAtLeast(0.4f)
-            val bmp = v.renderToBitmap(s) ?: return null
+            val bmp = v.renderToBitmap(s, background) ?: return null
             capWidth(bmp, 2400)
         } catch (e: Exception) {
             null

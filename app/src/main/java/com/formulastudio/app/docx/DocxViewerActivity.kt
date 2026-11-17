@@ -31,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -112,8 +113,10 @@ private fun ViewerScreen(uri: Uri?, onClose: () -> Unit) {
                 else -> LazyColumn(Modifier.fillMaxSize()) {
                     items(b) { blk ->
                         if (blk.isMath) {
-                            val bmp = remember(blk.text) {
-                                BlockRenderer.mathBitmap(ctx, blk.text, false)
+                            val bg = MaterialTheme.colorScheme.surface.toArgb()
+                            val ink = MaterialTheme.colorScheme.onSurface.toArgb()
+                            val bmp = remember(blk.text, bg, ink) {
+                                BlockRenderer.mathBitmap(ctx, blk.text, false, bg, ink)
                             }
                             if (bmp != null) {
                                 Image(bmp.asImageBitmap(), contentDescription = null,
