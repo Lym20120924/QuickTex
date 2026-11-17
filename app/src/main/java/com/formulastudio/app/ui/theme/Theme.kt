@@ -18,10 +18,13 @@ import com.formulastudio.app.util.Prefs
  */
 @Composable
 fun QuickTexTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean? = null,
     content: @Composable () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    // 以应用自身的显示模式为准（外观设置中心可强制浅色/深色/AMOLED），
+    // 不能只依赖 isSystemInDarkTheme()，否则会出现「背景深色 + 文字深色」的反转
+    val dark = darkTheme ?: shouldUseDark(context)
     val style = Prefs.colorStyle(context)
     val pal = palette(style)
 
@@ -36,9 +39,9 @@ fun QuickTexTheme(
 
     // 对比度：>1 提高对比，<1 降低对比
     val contrast = Prefs.contrast(context).coerceIn(0.6f, 1.6f)
-    fun adjust(c: Color): Color = if (contrast == 1f) c else lerp(c, if (darkTheme) Color.White else Color.Black, (contrast - 1f) * 0.5f)
+    fun adjust(c: Color): Color = if (contrast == 1f) c else lerp(c, if (dark) Color.White else Color.Black, (contrast - 1f) * 0.5f)
 
-    val scheme = if (darkTheme) {
+    val scheme = if (dark) {
         val amoled = Prefs.displayMode(context) == Prefs.DISPLAY_AMOLED
         val bg = if (amoled) Color.Black else Color(0xFF121212)
         val surface = if (amoled) Color.Black else Color(0xFF1E1E1E)
@@ -61,11 +64,17 @@ fun QuickTexTheme(
         )
     }
 
-    MaterialTheme(
-        colorScheme = scheme,
-        typography = QuickTexTypography,
-        content = content
-    )
+    // 显式提供 LocalContentColor：否则未指定颜色的文字会回落到默认黑色，
+    // 在深色背景下几乎不可见（真机截图确认过这个问题）
+    androidx.compose.runtime.CompositionLocalProvider(
+        androidx.compose.material3.LocalContentColor provides scheme.onSurface
+    ) {
+        MaterialTheme(
+            colorScheme = scheme,
+            typography = QuickTexTypography,
+            content = content
+        )
+    }
 }
 
 /** 当前是否应为深色（供非 Compose 代码判断） */
@@ -75,6 +84,9 @@ fun shouldUseDark(context: android.content.Context): Boolean = when (Prefs.displ
     else -> when (Prefs.darkMode(context)) {
         Prefs.DARK_LIGHT -> false
         Prefs.DARK_DARK -> true
-        else -> false
+        // 真正读取系统夜间模式（Configuration 的 uiMode），而不是默认返回 false
+        else -> (context.resources.configuration.uiMode and
+            android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
     }
 }

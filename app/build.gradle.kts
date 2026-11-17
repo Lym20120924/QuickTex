@@ -13,8 +13,8 @@ android {
         applicationId = "com.formulastudio.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 32
-        versionName = "3.2"
+        versionCode = 34
+        versionName = "3.4"
     }
 
     signingConfigs {

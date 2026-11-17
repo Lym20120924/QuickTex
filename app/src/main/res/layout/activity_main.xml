@@ -15,14 +15,17 @@
         android:paddingEnd="4dp">
 
         <TextView
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:text="@string/app_name"
-            android:textSize="17sp"
+            android:textSize="15sp"
+            android:maxLines="1"
+            android:ellipsize="end"
             android:textStyle="bold"
             android:textColor="?attr/colorPrimary"
-            android:paddingStart="10dp"
-            android:paddingEnd="14dp" />
+            android:paddingStart="6dp"
+            android:paddingEnd="4dp" />
 
         <Button
             android:id="@+id/btn_design_system"
@@ -30,20 +33,17 @@
             android:layout_width="wrap_content"
             android:layout_height="40dp"
             android:text="@string/design_system_title"
-            android:textSize="12sp"
+            android:textSize="11sp"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
             android:contentDescription="@string/design_system_title" />
-
-        <Space
-            android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1" />
 
         <ImageButton
             android:id="@+id/btn_favorite"
             style="?attr/borderlessButtonStyle"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:layout_width="40dp"
-            android:layout_height="42dp"
+            android:layout_width="36dp"
+            android:layout_height="40dp"
             android:src="@drawable/ic_star_outline"
             android:tint="?attr/colorOnSurfaceVariant"
             android:contentDescription="@string/favorite" />
@@ -52,8 +52,8 @@
             android:id="@+id/btn_history"
             style="?attr/borderlessButtonStyle"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:layout_width="40dp"
-            android:layout_height="42dp"
+            android:layout_width="36dp"
+            android:layout_height="40dp"
             android:src="@drawable/ic_library"
             android:tint="?attr/colorOnSurfaceVariant"
             android:contentDescription="@string/favorite_library" />
@@ -62,8 +62,8 @@
             android:id="@+id/btn_export"
             style="?attr/borderlessButtonStyle"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:layout_width="40dp"
-            android:layout_height="42dp"
+            android:layout_width="36dp"
+            android:layout_height="40dp"
             android:src="@drawable/ic_share"
             android:tint="?attr/colorOnSurfaceVariant"
             android:contentDescription="@string/export_png" />
@@ -72,8 +72,8 @@
             android:id="@+id/btn_doc"
             style="?attr/borderlessButtonStyle"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="36dp"
+            android:layout_height="38dp"
             android:src="@drawable/ic_doc"
             android:tint="?attr/colorOnSurfaceVariant"
             android:contentDescription="@string/document_title" />
@@ -82,8 +82,8 @@
             android:id="@+id/btn_settings"
             style="?attr/borderlessButtonStyle"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:layout_width="40dp"
-            android:layout_height="42dp"
+            android:layout_width="36dp"
+            android:layout_height="40dp"
             android:src="@drawable/ic_settings"
             android:tint="?attr/colorOnSurfaceVariant"
             android:contentDescription="@string/settings" />
@@ -92,8 +92,8 @@
             android:id="@+id/btn_about"
             style="?attr/borderlessButtonStyle"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:layout_width="40dp"
-            android:layout_height="42dp"
+            android:layout_width="36dp"
+            android:layout_height="40dp"
             android:src="@drawable/ic_info"
             android:tint="?attr/colorOnSurfaceVariant"
             android:contentDescription="@string/about" />
