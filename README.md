@@ -184,7 +184,7 @@ keytool -genkeypair -v -keystore keystore/quicktex-release.jks \
 - KaTeX 字体 / 代码：MIT License
 - Material Icons：Apache License 2.0
 
-第三方组件的许可证**官方原文**收录在 [LICENSES/](LICENSES/)，说明见 [LICENSES/README.md](LICENSES/README.md)。
+许可证文件放在仓库**根目录**（`LICENSE` / `LICENSE-GPL-2.0.txt` / `LICENSE-Apache-2.0.txt` / `LICENSE-OFL-1.1.txt`），GitHub 的「许可证」标签页会列出全部并可切换查看；说明见 [LICENSES/README.md](LICENSES/README.md)。
 
 ---
 
