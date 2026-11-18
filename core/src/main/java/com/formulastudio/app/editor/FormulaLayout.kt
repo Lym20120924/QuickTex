@@ -37,7 +37,9 @@ class LayoutRun(val text: String, val fontId: String, val width: Float)
 
 class SqrtInfo(
     val radicalSize: Float, val radicalW: Float, val contentW: Float,
-    val gapAbove: Float, val overTh: Float, val contentX: Float
+    val gapAbove: Float, val overTh: Float, val contentX: Float,
+    /** 根号横线相对于根号原点的 y（贴着“√”字符顶部，布局阶段一次算好，绘制阶段直接用） */
+    val lineY: Float
 )
 
 class OpInfo(val sym: String, val size: Float, val w: Float, val baseline: Float)
@@ -252,7 +254,10 @@ class FormulaLayout(val metrics: LayoutMetrics) {
                         box.baseline = (radY + rad.baseline) - extra
                     }
                 }
-                sqrtInfo[n] = SqrtInfo(radicalSize, radicalW, rad.w, gapAbove, overTh, contentX)
+                // 横线贴着“√”字符顶部：字符基线在 radicalSize * 0.82f，顶部再减 ascent
+                val lineY = radicalSize * 0.82f -
+                    metrics.ascent(radicalSize, style("main", radicalSize))
+                sqrtInfo[n] = SqrtInfo(radicalSize, radicalW, rad.w, gapAbove, overTh, contentX, lineY)
                 box
             }
             is MathNode.Script -> {

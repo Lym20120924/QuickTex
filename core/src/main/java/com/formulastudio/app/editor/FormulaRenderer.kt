@@ -66,13 +66,10 @@ class FormulaRenderer(
             is MathNode.Sqrt -> {
                 val d = layout.sqrtInfo[n] ?: return
                 target.drawText("√", x, y + d.radicalSize * 0.82f, style("main", d.radicalSize))
-                // 横线必须贴着“√”字符的顶部，否则看起来是分离的两笔。
-                // 字符顶部 = 基线 - ascent，用同一套度量算出来。
-                val sqrtTop = y + d.radicalSize * 0.82f -
-                    metrics.ascent(d.radicalSize, style("main", d.radicalSize))
+                // 横线贴着“√”字符顶部：y 由布局阶段一次算好（lineY），两个后端位元一致
                 target.drawLine(
-                    x + d.radicalW + 0.02f * box.sz, sqrtTop,
-                    x + d.radicalW + 0.02f * box.sz + d.contentW, sqrtTop,
+                    x + d.radicalW + 0.02f * box.sz, y + d.lineY,
+                    x + d.radicalW + 0.02f * box.sz + d.contentW, y + d.lineY,
                     ink(max(minStroke * 1.3f, 0.07f * box.sz))
                 )
             }
