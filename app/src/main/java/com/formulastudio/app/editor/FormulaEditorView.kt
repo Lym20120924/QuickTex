@@ -190,6 +190,9 @@ class FormulaEditorView @JvmOverloads constructor(
 
     /** 绘制器（阶段 4.4b：绘制逻辑也搬进 core） */
     private val renderer = FormulaRenderer(layoutEngine, inkColor)
+
+    /** 命中测试与光标定位（阶段 4.4d：已搬进 core） */
+    private val hitTester = FormulaHitTester(layoutEngine)
     private val groupOrigins get() = renderer.groupOrigins
     private var contentW = 0f
     private var contentH = 0f
@@ -359,7 +362,13 @@ class FormulaEditorView @JvmOverloads constructor(
                     5f * density, 5f * density, focusFillPaint
                 )
                 if (blinkOn) {
-                    val x = ox + caretX(formula.cursorContainer, gBox)
+                    val prev = formula.prevNode()
+                    val prevText = when (prev) {
+                        is MathNode.Text -> prev.text
+                        is MathNode.Chem -> prev.text
+                        else -> null
+                    }
+                    val x = ox + hitTester.caretX(formula.cursorContainer, gBox, formula.cursorIndex, formula.cursorChar, prevText)
                     val top = oy + gBox.baseline - ascent(gBox.sz)
                     val bottom = oy + gBox.baseline + descent(gBox.sz)
                     canvas.drawLine(x, top, x, bottom, caretPaint)
@@ -422,38 +431,6 @@ class FormulaEditorView @JvmOverloads constructor(
         invalidate()
     }
 
-    /** 光标在容器中的 x 坐标（支持文本节点内部） */
-    private fun caretX(g: MathNode.Group, box: LayoutBox): Float {
-        var x = 0f
-        val n = formula.cursorIndex.coerceAtMost(box.parts.size)
-        for (i in 0 until n) {
-            x += box.parts[i].box.w
-            if (i < n - 1) x += 0.06f * box.sz
-        }
-        if (formula.cursorChar >= 0) {
-            val prev = formula.prevNode()
-            val t = when (prev) {
-                is MathNode.Text -> prev.text
-                is MathNode.Chem -> prev.text
-                else -> null
-            }
-            if (t != null) x += prefixWidth(t, box.sz, formula.cursorChar)
-        }
-        return x
-    }
-
-    /** 文本前 k 个字符的渲染宽度 */
-    private fun prefixWidth(text: String, sz: Float, k: Int): Float {
-        var w = 0f
-        var cnt = 0
-        for (r in drawRuns(text, sz)) {
-            val take = min(k - cnt, r.text.length)
-            if (take <= 0) break
-            w += measureText(r.paint, r.text.substring(0, take), sz)
-            cnt += take
-        }
-        return w
-    }
 
     // ---------- 触摸 ----------
 
@@ -498,15 +475,8 @@ class FormulaEditorView @JvmOverloads constructor(
         val layout = layoutRoot ?: return
         val px = tx - paddingLeft + scrollX
         val py = ty - paddingTop + scrollY
-        val hit = hitTestBox(formula.root, layout, px, py)
-        if (hit != null) {
-            applyHit(hit)
-            return
-        }
-        // 点击在公式行外（画布大片空白）：直接用 x 坐标映射到 root 的最近字符边界
-        if (formula.root.nodes.isEmpty()) return
-        val (g, idx, char) = groupIndexAt(formula.root, px)
-        applyHit(Triple(g, idx, char))
+        val hit = hitTester.hitTest(formula.root, layout, px, py)
+        applyHit(hit)
     }
 
     private fun applyHit(hit: Triple<MathNode.Group, Int, Int>) {
@@ -526,91 +496,16 @@ class FormulaEditorView @JvmOverloads constructor(
         invalidate()
     }
 
-    private fun hitTestBox(
-        node: MathNode,
-        box: LayoutBox,
-        px: Float,
-        py: Float
-    ): Triple<MathNode.Group, Int, Int>? {
-        val slack = 0.5f * box.sz // 行高容差：点得稍偏上下也能命中
-        // 距离当前盒太远（比如点到公式外很远的空白）→ 不响应
-        if (py < -slack || py > box.h + slack) return null
-
-        var best: Part? = null
-        var bestDist = Float.MAX_VALUE
-        for (p in box.parts) {
-            val dyDist = abs(py - (p.dy + p.box.h / 2f))
-            if (dyDist < bestDist) { bestDist = dyDist; best = p }
-            // 精确命中：x、y 都在子盒内
-            if (px >= p.dx - slack * 0.5f && px <= p.dx + p.box.w + slack * 0.5f &&
-                py >= p.dy - slack && py <= p.dy + p.box.h + slack
-            ) {
-                val sub = hitTestBox(p.node, p.box, px - p.dx, py - p.dy)
-                if (sub != null) return sub
-            }
-        }
-        // 没有精确命中：
-        if (node is MathNode.Group) {
-            // 容器 → 直接按 x 定位（点击容器行内任意高度都行）
-            return groupIndexAt(node, px)
-        }
-        // 结构节点（分数/根号/矩阵…）→ 进入最近的子容器（分子/分母/单元格…）
-        if (best != null) {
-            // 局部拷贝一份：core 的 Part.node 是跨模块属性，不能直接 smart cast
-            val bestNode = best.node
-            return hitTestBox(bestNode, best.box, px - best.dx, py - best.dy)
-                ?: (if (bestNode is MathNode.Group) groupIndexAt(bestNode, px - best.dx) else null)
-        }
-        return null
-    }
-
-    /** 返回 (容器, 节点下标, 节点内字符偏移)；char>=0 表示落在文本节点内部 */
-    private fun groupIndexAt(g: MathNode.Group, px: Float): Triple<MathNode.Group, Int, Int> {
-        val parts = groupBoxes[g]?.parts ?: emptyList()
-        if (parts.isEmpty()) return Triple(g, 0, -1)
-        val gap = 0.06f * (groupBoxes[g]?.sz ?: baseSize)
-        // "最近边界"算法：计算每个候选插入位置，取与点击 x 最近者
-        var bestNode = 0
-        var bestChar = -1
-        var bestDist = Float.MAX_VALUE
-        var x = 0f
-        for (i in parts.indices) {
-            val p = parts[i]
-            val node = g.nodes[i]
-            val isText = node is MathNode.Text || node is MathNode.Chem
-            // 非文本节点：part 起点候选（光标在该节点之前）
-            if (!isText) {
-                val d0 = abs(px - x)
-                if (d0 < bestDist) { bestDist = d0; bestNode = i; bestChar = -1 }
-            }
-            // 文本节点内部的每个字符边界（替代 part 起点）
-            if (isText) {
-                val nodeText = (node as? MathNode.Text)?.text ?: (node as MathNode.Chem).text
-                var cx = x
-                var cnt = 0 // 前 cnt 个字符已过的候选 cursorChar
-                for (r in drawRuns(nodeText, p.box.sz)) {
-                    for (c in r.text) {
-                        cnt++
-                        cx += measureText(r.paint, c.toString(), p.box.sz)
-                        val d = abs(px - cx)
-                        if (d < bestDist) { bestDist = d; bestNode = i; bestChar = cnt }
-                    }
-                }
-            }
-            // part 终点候选（光标在该节点之后）
-            val d1 = abs(px - (x + p.box.w))
-            if (d1 < bestDist) { bestDist = d1; bestNode = i + 1; bestChar = -1 }
-            x += p.box.w + gap
-        }
-        // 末尾边界
-        val dend = abs(px - (x - gap))
-        if (dend < bestDist) { bestNode = parts.size; bestChar = -1 }
-        return Triple(g, bestNode, bestChar)
-    }
 
     private fun ensureCursorVisible() {
         val gBox = groupBoxes[formula.cursorContainer] ?: return
-        val x = caretX(formula.cursorContainer, gBox) + paddingLeft
+        val prev = formula.prevNode()
+        val prevText = when (prev) {
+            is MathNode.Text -> prev.text
+            is MathNode.Chem -> prev.text
+            else -> null
+        }
+        val x = hitTester.caretX(formula.cursorContainer, gBox, formula.cursorIndex, formula.cursorChar, prevText) + paddingLeft
         val y = gBox.baseline + paddingTop
         val vw = width
         val vh = height
