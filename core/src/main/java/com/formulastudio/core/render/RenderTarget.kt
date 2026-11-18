@@ -13,7 +13,9 @@ data class TextStyle(
      * 字体标识（"main" / "var" / "op" / "cjk" / "mono"）。
      * 与平台无关，仅用于让各后端选回正确的字体，保证度量与绘制一致。
      */
-    val fontId: String = "main"
+    val fontId: String = "main",
+    /** 文本对齐："left" / "center" / "right" */
+    val align: String = "left"
 )
 
 /** 平台无关的描边 / 填充描述 */
@@ -21,7 +23,11 @@ data class Ink(
     val color: Int,
     val width: Float,
     val filled: Boolean = false,
-    val dashed: Boolean = false
+    val dashed: Boolean = false,
+    /** 圆角线帽（手绘括号用） */
+    val roundCap: Boolean = false,
+    /** 圆角线接（手绘括号用） */
+    val roundJoin: Boolean = false
 )
 
 /**

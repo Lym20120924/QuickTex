@@ -19,6 +19,11 @@ class CanvasTarget(
         textSize = style.size
         color = style.color
         typeface = typefaceFor(res, style)
+        textAlign = when (style.align) {
+            "center" -> Paint.Align.CENTER
+            "right" -> Paint.Align.RIGHT
+            else -> Paint.Align.LEFT
+        }
     }
 
     private fun paint(ink: Ink) = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -26,6 +31,8 @@ class CanvasTarget(
         strokeWidth = ink.width
         style = if (ink.filled) Paint.Style.FILL else Paint.Style.STROKE
         if (ink.dashed) pathEffect = DashPathEffect(floatArrayOf(6f, 4f), 0f)
+        if (ink.roundCap) strokeCap = Paint.Cap.ROUND
+        if (ink.roundJoin) strokeJoin = Paint.Join.ROUND
     }
 
     override fun save() { canvas.save() }

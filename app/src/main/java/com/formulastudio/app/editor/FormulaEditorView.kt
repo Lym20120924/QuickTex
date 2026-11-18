@@ -187,7 +187,10 @@ class FormulaEditorView @JvmOverloads constructor(
 
     /** 排版引擎（阶段 4.4a：布局几何已搬进 core，这里只做绘制与交互） */
     private val layoutEngine = FormulaLayout(AndroidLayoutMetrics(resources))
-    private val groupOrigins = HashMap<MathNode.Group, Pair<Float, Float>>()
+
+    /** 绘制器（阶段 4.4b：绘制逻辑也搬进 core） */
+    private val renderer = FormulaRenderer(layoutEngine, inkColor)
+    private val groupOrigins get() = renderer.groupOrigins
     private var contentW = 0f
     private var contentH = 0f
 
@@ -275,7 +278,7 @@ class FormulaEditorView @JvmOverloads constructor(
     // ---------- 文本分段渲染（中文/函数名/斜体变量） ----------
 
 
-    /** 按 core 的 fontId 选回平台字体（绘制 / 命中测试用） */
+    /** 按 core 的 fontId 选回平台字体（命中测试 / 光标定位用） */
     private fun paintFor(fontId: String): Paint = when (fontId) {
         "var" -> varPaint
         "op" -> opPaint
@@ -286,66 +289,9 @@ class FormulaEditorView @JvmOverloads constructor(
 
     private class DrawRun(val text: String, val paint: Paint, val width: Float)
 
-    /**
-     * 绘制 / 命中测试用的文本分段：布局逻辑来自 core 的 [FormulaLayout.textRuns]，
-     * 这里只把平台无关的 fontId 换成具体 Paint。
-     */
+    /** 文本分段：布局逻辑来自 core，这里只把 fontId 换成 Paint */
     private fun drawRuns(text: String, sz: Float): List<DrawRun> =
         layoutEngine.textRuns(text, sz).map { DrawRun(it.text, paintFor(it.fontId), it.width) }
-
-    /** 手绘细括号，替代字体放大导致的粗括号 */
-    private fun drawBracket(canvas: com.formulastudio.core.render.RenderTarget, ch: String, x: Float, y: Float, h: Float) {
-        if (ch == "." || ch.isEmpty()) return
-        val w = bracketWidth(h, density)
-        when (ch) {
-            "(" -> canvas.drawPath(
-                listOf(
-                    PathOp.MoveTo(x + w, y),
-                    PathOp.CubicTo(x, y + h * 0.25f, x, y + h * 0.75f, x + w, y + h)
-                ), bracketPaint
-            .ink())
-            ")" -> canvas.drawPath(
-                listOf(
-                    PathOp.MoveTo(x, y),
-                    PathOp.CubicTo(x + w, y + h * 0.25f, x + w, y + h * 0.75f, x, y + h)
-                ), bracketPaint
-            .ink())
-            "[" -> {
-                canvas.drawLine(x, y, x, y + h, bracketPaint.ink())
-                canvas.drawLine(x, y, x + w, y, bracketPaint.ink())
-                canvas.drawLine(x, y + h, x + w, y + h, bracketPaint.ink())
-            }
-            "]" -> {
-                canvas.drawLine(x + w, y, x + w, y + h, bracketPaint.ink())
-                canvas.drawLine(x, y, x + w, y, bracketPaint.ink())
-                canvas.drawLine(x, y + h, x + w, y + h, bracketPaint.ink())
-            }
-            "|" -> canvas.drawLine(x + w / 2f, y, x + w / 2f, y + h, bracketPaint.ink())
-            "\\{", "{" -> canvas.drawPath(
-                listOf(
-                    PathOp.MoveTo(x + w * 0.85f, y),
-                    PathOp.QuadTo(x, y + h * 0.14f, x, y + h * 0.42f),
-                    PathOp.QuadTo(x, y + h * 0.5f, x + w * 0.26f, y + h * 0.5f),
-                    PathOp.QuadTo(x, y + h * 0.5f, x, y + h * 0.58f),
-                    PathOp.QuadTo(x, y + h * 0.86f, x + w * 0.85f, y + h)
-                ), bracketPaint
-            .ink())
-            "\\}", "}" -> canvas.drawPath(
-                listOf(
-                    PathOp.MoveTo(x + w * 0.15f, y),
-                    PathOp.QuadTo(x + w, y + h * 0.14f, x + w, y + h * 0.42f),
-                    PathOp.QuadTo(x + w, y + h * 0.5f, x + w * 0.74f, y + h * 0.5f),
-                    PathOp.QuadTo(x + w, y + h * 0.5f, x + w, y + h * 0.58f),
-                    PathOp.QuadTo(x + w, y + h * 0.86f, x + w * 0.15f, y + h)
-                ), bracketPaint
-            .ink())
-            else -> {
-                textPaint.textSize = h * 0.85f
-                val fm = textPaint.fontMetrics
-                canvas.drawText(ch, x, y + h - fm.descent - (h * 0.05f), textPaint.textStyle())
-            }
-        }
-    }
 
     private fun relayout() {
         layoutRoot = layoutEngine.layout(formula.root, baseSize)
@@ -361,19 +307,7 @@ class FormulaEditorView @JvmOverloads constructor(
      */
     private fun drawContent(canvas: com.formulastudio.core.render.RenderTarget) {
         val layout = layoutRoot ?: return
-        val lines = multilineRowNodes[formula.root]
-        val lineBoxes = multilineLines[formula.root]
-        if (lines != null && lineBoxes != null) {
-            val lineGap = 0.4f * baseSize
-            var yOff = 0f
-            for ((i, lg) in lines.withIndex()) {
-                val tmp = MathNode.Group().apply { nodes.addAll(lg) }
-                drawNode(canvas, tmp, lineBoxes[i], 0f, yOff)
-                yOff += lineBoxes[i].h + lineGap
-            }
-            return
-        }
-        drawNode(canvas, formula.root, layout, 0f, 0f)
+        renderer.draw(canvas, formula.root, layout)
     }
 
     // 排版缓存由 core 的排版引擎持有，这里转发，绘制/命中测试代码不用改
@@ -486,158 +420,6 @@ class FormulaEditorView @JvmOverloads constructor(
         recolor()
         relayout()
         invalidate()
-    }
-
-    private fun drawNode(canvas: com.formulastudio.core.render.RenderTarget, n: MathNode, box: LayoutBox, x: Float, y: Float) {
-        // 先画各结构节点自身的装饰
-        when (n) {
-            is MathNode.Fraction -> {
-                val barY = y + (box.parts.firstOrNull()?.box?.h ?: 0f)
-                val gap = 0.14f * n.num.let { box.sz }
-                val barH = max(1.3f * density, 0.07f * box.sz)
-                linePaint.strokeWidth = barH
-                canvas.drawLine(x, y + barY + gap + barH / 2f, x + box.w, y + barY + gap + barH / 2f, linePaint.ink())
-                linePaint.strokeWidth = 1.4f * density
-            }
-            is MathNode.Sqrt -> {
-                val d = sqrtDrawData[n] ?: return
-                textPaint.textSize = d.radicalSize
-                canvas.drawText("√", x, y + d.radicalSize * 0.82f, textPaint.textStyle())
-                linePaint.strokeWidth = max(1.3f * density, 0.07f * box.sz)
-                canvas.drawLine(
-                    x + d.radicalW + 0.02f * box.sz, y + d.gapAbove,
-                    x + d.radicalW + 0.02f * box.sz + d.contentW, y + d.gapAbove,
-                    linePaint
-                .ink())
-                linePaint.strokeWidth = 1.4f * density
-                textPaint.textSize = box.sz
-            }
-            is MathNode.Op -> {
-                val info = opInfo[n] ?: return
-                opPaint.textSize = info.size
-                canvas.drawText(info.sym, x + (box.w - info.w) / 2f, y + info.baseline, opPaint.textStyle())
-            }
-            is MathNode.Paren -> {
-                val info = parenInfo[n] ?: return
-                drawBracket(canvas, info.left, x, y, info.h)
-                drawBracket(canvas, info.right, x + box.w - bracketWidth(info.h, density), y, info.h)
-            }
-            is MathNode.Matrix -> {
-                val info = matrixInfo[n] ?: return
-                if (info.left.isNotEmpty()) {
-                    drawBracket(canvas, info.left, x, y, info.h)
-                    drawBracket(canvas, info.right, x + box.w - bracketWidth(info.h, density), y, info.h)
-                }
-            }
-            is MathNode.Cases -> {
-                val info = casesInfo[n] ?: return
-                drawBracket(canvas, "{", x, y, info.h)
-            }
-            is MathNode.Accent -> {
-                val info = accentInfo[n] ?: return
-                val cx = x + box.w / 2f
-                // 下移避免符号溢出 box 顶部
-                val ay = y + info.accentH * 0.92f
-                when (info.accent) {
-                    "vec" -> {
-                        // 向量：细横线 + 右箭头尖，宽度 = base 全宽
-                        val lx = x + 0.05f * box.sz
-                        val rx = x + box.w - 0.05f * box.sz
-                        accentPaint.strokeWidth = max(1.0f * density, 0.035f * box.sz)
-                        canvas.drawLine(lx, ay, rx, ay, accentPaint.ink())
-                        accentPaint.textSize = 0.45f * box.sz
-                        accentPaint.textAlign = Paint.Align.LEFT
-                        canvas.drawText("▶", rx - 0.04f * box.sz, ay, accentPaint.textStyle())
-                        accentPaint.strokeWidth = 1.4f * density
-                    }
-                    "overrightarrow" -> {
-                        val lx = x + 0.05f * box.sz
-                        val rx = x + box.w - 0.05f * box.sz
-                        accentPaint.strokeWidth = max(1.0f * density, 0.035f * box.sz)
-                        canvas.drawLine(lx, ay, rx, ay, accentPaint.ink())
-                        accentPaint.textSize = 0.5f * box.sz
-                        accentPaint.textAlign = Paint.Align.LEFT
-                        canvas.drawText("▶", rx - 0.04f * box.sz, ay, accentPaint.textStyle())
-                        accentPaint.textAlign = Paint.Align.LEFT
-                        accentPaint.strokeWidth = 1.4f * density
-                    }
-                    "hat" -> {
-                        accentPaint.textSize = 0.68f * box.sz
-                        canvas.drawText("^", cx, ay, accentPaint.textStyle())
-                    }
-                    "bar", "overline" -> {
-                        accentPaint.strokeWidth = max(1.2f * density, 0.06f * box.sz)
-                        canvas.drawLine(x + 0.02f * box.sz, ay, x + box.w - 0.02f * box.sz, ay, accentPaint.ink())
-                        accentPaint.strokeWidth = 1.4f * density
-                    }
-                    "dot" -> {
-                        accentPaint.textSize = 0.65f * box.sz
-                        canvas.drawText("·", cx, ay, accentPaint.textStyle())
-                    }
-                    "widetilde", "widehat" -> {
-                        accentPaint.textSize = 0.60f * box.sz
-                        canvas.drawText("~", cx, ay, accentPaint.textStyle())
-                    }
-                    else -> {
-                        accentPaint.textSize = 0.65f * box.sz
-                        canvas.drawText(info.accent.take(1), cx, ay, accentPaint.textStyle())
-                    }
-                }
-            }
-            else -> {}
-        }
-
-        // 递归画子节点
-        for (p in box.parts) {
-            drawNode(canvas, p.node, p.box, x + p.dx, y + p.dy)
-        }
-
-        // 文本/符号/占位框
-        when (n) {
-            is MathNode.Text -> {
-                // 分段绘制：中文宋体、函数名正体、变量斜体
-                var cx = x
-                for (r in drawRuns(n.text, box.sz)) {
-                    r.paint.textSize = box.sz
-                    canvas.drawText(r.text, cx, y + box.baseline, r.paint.textStyle())
-                    cx += r.width
-                }
-            }
-            is MathNode.Cmd -> {
-                val disp = CMD_DISPLAY[n.latex] ?: n.latex.trimStart('\\')
-                if (n.latex in OP_LATEX) {
-                    opPaint.textSize = box.sz * 1.2f
-                    canvas.drawText(disp, x, y + box.baseline, opPaint.textStyle())
-                } else {
-                    textPaint.textSize = box.sz
-                    canvas.drawText(disp, x, y + box.baseline, textPaint.textStyle())
-                }
-            }
-            is MathNode.Raw -> {
-                rawPaint.textSize = box.sz * 0.85f
-                canvas.drawText(n.latex, x, y + box.baseline, rawPaint.textStyle())
-            }
-            is MathNode.Func -> {
-                textPaint.textSize = box.sz * 0.95f
-                canvas.drawText(n.name, x, y + box.baseline, textPaint.textStyle())
-            }
-            is MathNode.Chem -> {
-                textPaint.textSize = box.sz * 0.92f
-                canvas.drawText(n.text, x, y + box.baseline, textPaint.textStyle())
-            }
-            is MathNode.Group -> {
-                groupOrigins[n] = x to y
-                if (n.nodes.isEmpty()) {
-                    // 占位框
-                    canvas.drawRoundRect(
-                        x, y + box.baseline - ascent(box.sz),
-                        x + box.w, y + box.baseline + descent(box.sz),
-                        3f * density, 3f * density, placeholderPaint
-                    .ink())
-                }
-            }
-            else -> {}
-        }
     }
 
     /** 光标在容器中的 x 坐标（支持文本节点内部） */

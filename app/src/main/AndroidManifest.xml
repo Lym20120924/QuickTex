@@ -59,6 +59,14 @@
         android:exported="false"
         android:label="@string/title_compose_editor" />
     <activity
+        android:name=".ui.ComposeRenderActivity"
+        android:exported="true"
+        android:label="Compose 渲染验证" />
+    <activity
+        android:name=".ui.RenderCompareActivity"
+        android:exported="true"
+        android:label="渲染后端对比" />
+    <activity
         android:name=".docx.DocxViewerActivity"
         android:exported="true"
         android:label="@string/docx_viewer_title">
