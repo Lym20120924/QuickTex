@@ -165,6 +165,8 @@ keytool -genkeypair -v -keystore keystore/quicktex-release.jks \
 | **v4.0** | **Office 双向：docx 导入查看** |
 | v4.1 | 深色渲染适配 |
 | **v4.2** | 字体度量统一走接缝（像素级等价） |
+| **v4.3** | 关于页 GitHub 地址改为本仓库 |
+| **v4.4** | 布局几何搬进 `core`（排版引擎平台无关） |
 
 ---
 
