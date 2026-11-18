@@ -1,5 +1,6 @@
 package com.formulastudio.app.editor
 
+import com.formulastudio.app.render.AndroidLayoutMetrics
 import com.formulastudio.app.render.AndroidTextMeasurer
 import com.formulastudio.app.render.CanvasTarget
 import com.formulastudio.app.render.SvgTarget
@@ -182,19 +183,10 @@ class FormulaEditorView @JvmOverloads constructor(
 
     // ---------- 布局结果 ----------
 
-    class LayoutBox(
-        var w: Float,
-        var h: Float,
-        var baseline: Float,
-        val sz: Float
-    ) {
-        val parts = ArrayList<Part>()
-    }
-
-    class Part(val node: MathNode, val dx: Float, var dy: Float, val box: LayoutBox)
-
     private var layoutRoot: LayoutBox? = null
-    private val groupBoxes = HashMap<MathNode.Group, LayoutBox>()
+
+    /** 排版引擎（阶段 4.4a：布局几何已搬进 core，这里只做绘制与交互） */
+    private val layoutEngine = FormulaLayout(AndroidLayoutMetrics(resources))
     private val groupOrigins = HashMap<MathNode.Group, Pair<Float, Float>>()
     private var contentW = 0f
     private var contentH = 0f
@@ -282,126 +274,29 @@ class FormulaEditorView @JvmOverloads constructor(
 
     // ---------- 文本分段渲染（中文/函数名/斜体变量） ----------
 
-    /** 需要排成正体（非斜体）的函数名与常量 */
-    private val FUNCTION_NAMES = setOf(
-        "sin", "cos", "tan", "cot", "sec", "csc", "log", "ln", "lg", "exp",
-        "lim", "max", "min", "inf", "sup", "det", "gcd", "arg", "argmin", "argmax",
-        "sinh", "cosh", "tanh", "arcsin", "arccos", "arctan", "tangent",
-        "e", "d"
-    )
 
-    private fun isCjk(c: Char): Boolean =
-        (c in '\u4E00'..'\u9FFF') || (c in '\u3000'..'\u303F') || (c in '\uFF00'..'\uFFEF')
-
-    private class TextRun(val text: String, val paint: Paint, val width: Float)
-
-    /**
-     * 把一段文本拆成若干渲染段并分别测量：
-     *  - 中文/全角标点 → 宋体（cjkPaint）
-     *  - 拉丁字母：函数名（sin/cos/e…）→ 正体；其他（单字母变量或 ab 组合）→ 斜体
-     *  - 数字/符号 → 正体
-     */
-    private fun textRuns(text: String, sz: Float): List<TextRun> {
-        val runs = ArrayList<TextRun>()
-        var i = 0
-        var prevChar: Char? = null // 跨段延续，用于 i 正体规则
-        while (i < text.length) {
-            val kind = when {
-                isCjk(text[i]) -> 0
-                text[i].isLetter() -> 1
-                else -> 2
-            }
-            var j = i
-            while (j < text.length) {
-                val k = when {
-                    isCjk(text[j]) -> 0
-                    text[j].isLetter() -> 1
-                    else -> 2
-                }
-                if (k != kind) break
-                j++
-            }
-            val seg = text.substring(i, j)
-            when (kind) {
-                0 -> runs.add(TextRun(seg, cjkPaint, measureText(cjkPaint, seg, sz)))
-                1 -> runs.addAll(latinRuns(seg, sz, prevChar))
-                else -> runs.add(TextRun(seg, textPaint, measureText(textPaint, seg, sz)))
-            }
-            // 记录上一个字符（用于 i 正体规则：前一个字符是数字或 b 时 i 视为虚数单位）
-            prevChar = if (kind == 1) seg.lastOrNull() else seg.lastOrNull()
-            i = j
-        }
-        return runs
+    /** 按 core 的 fontId 选回平台字体（绘制 / 命中测试用） */
+    private fun paintFor(fontId: String): Paint = when (fontId) {
+        "var" -> varPaint
+        "op" -> opPaint
+        "cjk" -> cjkPaint
+        "mono" -> rawPaint
+        else -> textPaint
     }
 
-    /**
-     * 拉丁字母段：从左到右扫描，连续识别所有函数名（sin/cos/e…）→ 正体；
-     * 其余字母 → 斜体；'i'/'I' 在前一个字符是数字或 b 时 → 正体（虚数单位）。
-     */
-    private fun latinRuns(seg: String, sz: Float, prevChar: Char? = null): List<TextRun> {
-        val out = ArrayList<TextRun>()
-        val fns = FUNCTION_NAMES.sortedByDescending { it.length }
-        var i = 0
-        var lastChar: Char? = prevChar // 跨段延续（用于 i 正体规则）
-        while (i < seg.length) {
-            var matched: String? = null
-            for (fn in fns) {
-                if (seg.regionMatches(i, fn, 0, fn.length, ignoreCase = true)) { matched = fn; break }
-            }
-            if (matched != null) {
-                val head = seg.substring(i, i + matched.length)
-                out.add(TextRun(head, textPaint, measureText(textPaint, head, sz)))
-                i += matched.length
-                lastChar = head.lastOrNull()
-            } else {
-                // 斜体段：吞到下一个函数名前；同时检查 'i' 前是不是数字/b → 正体
-                var j = i + 1
-                while (j < seg.length) {
-                    var isFn = false
-                    for (fn in fns) {
-                        if (seg.regionMatches(j, fn, 0, fn.length, ignoreCase = true)) { isFn = true; break }
-                    }
-                    if (isFn) break
-                    j++
-                }
-                // 在 rest 中把 'i'/'I'（前一个字符是数字/b 的）拆出来作为正体
-                var k = i
-                while (k < j) {
-                    val c = seg[k]
-                    val isImagUnit = (c == 'i' || c == 'I') && (lastChar?.isDigit() == true
-                        || lastChar == 'b' || lastChar == 'B'
-                        || lastChar == 'd' || lastChar == 'D')
-                    if (isImagUnit) {
-                        // 先把 k 之前的斜体段（如果有）输出
-                        if (k > i) {
-                            val seg1 = seg.substring(i, k)
-                            out.add(TextRun(seg1, varPaint, measureText(varPaint, seg1, sz)))
-                        }
-                        // 输出 i 为正体
-                        out.add(TextRun(c.toString(), textPaint, measureText(textPaint, c.toString(), sz)))
-                        i = k + 1
-                    }
-                    lastChar = c
-                    k++
-                }
-                if (i < j) {
-                    val rest = seg.substring(i, j)
-                    out.add(TextRun(rest, varPaint, measureText(varPaint, rest, sz)))
-                    lastChar = rest.lastOrNull()
-                    i = j
-                }
-            }
-        }
-        return out
-    }
+    private class DrawRun(val text: String, val paint: Paint, val width: Float)
 
-    private fun bracketW(h: Float): Float =
-        (h * 0.10f).coerceAtLeast(4f * density)
+    /**
+     * 绘制 / 命中测试用的文本分段：布局逻辑来自 core 的 [FormulaLayout.textRuns]，
+     * 这里只把平台无关的 fontId 换成具体 Paint。
+     */
+    private fun drawRuns(text: String, sz: Float): List<DrawRun> =
+        layoutEngine.textRuns(text, sz).map { DrawRun(it.text, paintFor(it.fontId), it.width) }
 
     /** 手绘细括号，替代字体放大导致的粗括号 */
     private fun drawBracket(canvas: com.formulastudio.core.render.RenderTarget, ch: String, x: Float, y: Float, h: Float) {
         if (ch == "." || ch.isEmpty()) return
-        val w = bracketW(h)
+        val w = bracketWidth(h, density)
         when (ch) {
             "(" -> canvas.drawPath(
                 listOf(
@@ -453,13 +348,7 @@ class FormulaEditorView @JvmOverloads constructor(
     }
 
     private fun relayout() {
-        groupBoxes.clear()
-        multilineLines.clear()
-        if (formula.root.nodes.any { it is MathNode.NewLine }) {
-            layoutRoot = measureMultiline(formula.root, baseSize)
-        } else {
-            layoutRoot = measureGroup(formula.root, baseSize)
-        }
+        layoutRoot = layoutEngine.layout(formula.root, baseSize)
         contentW = (layoutRoot?.w ?: 0f) + paddingLeft + paddingRight
         contentH = (layoutRoot?.h ?: 0f) + paddingTop + paddingBottom
     }
@@ -487,318 +376,16 @@ class FormulaEditorView @JvmOverloads constructor(
         drawNode(canvas, formula.root, layout, 0f, 0f)
     }
 
-    /** 多行排版缓存：Group → 每行的 LayoutBox 列表 */
-    private val multilineLines = HashMap<MathNode.Group, List<LayoutBox>>()
-    /** NewLine 分隔出的行节点列表缓存 */
-    private val multilineRowNodes = HashMap<MathNode.Group, List<List<MathNode>>>()
-
-    private fun measureMultiline(g: MathNode.Group, sz: Float): LayoutBox {
-        val box = LayoutBox(0f, 0f, 0f, sz)
-        groupBoxes[g] = box
-        // 按 NewLine 分割行
-        val rows = ArrayList<List<MathNode>>()
-        var cur = ArrayList<MathNode>()
-        for (n in g.nodes) {
-            if (n is MathNode.NewLine) { rows.add(cur); cur = ArrayList() }
-            else cur.add(n)
-        }
-        if (cur.isNotEmpty() || rows.isEmpty()) rows.add(cur)
-        multilineRowNodes[g] = rows
-        val lineGap = 0.4f * sz
-        var totalH = 0f
-        var maxW = 0f
-        val lineBoxes = ArrayList<LayoutBox>()
-        for ((i, nodes) in rows.withIndex()) {
-            if (i > 0) totalH += lineGap
-            val tmp = MathNode.Group().apply { this.nodes.addAll(nodes) }
-            val lb = measureGroup(tmp, sz)
-            box.parts.add(Part(tmp, 0f, totalH, lb))
-            totalH += lb.h
-            maxW = max(maxW, lb.w)
-            lineBoxes.add(lb)
-        }
-        multilineLines[g] = lineBoxes
-        box.w = maxW
-        box.h = totalH
-        box.baseline = lineBoxes.firstOrNull()?.baseline ?: ascent(sz)
-        return box
-    }
-
-    private fun measureGroup(g: MathNode.Group, sz: Float): LayoutBox {
-        val box = LayoutBox(0f, 0f, 0f, sz)
-        groupBoxes[g] = box
-        if (g.nodes.isEmpty()) {
-            val minW = 1.15f * sz
-            box.w = minW
-            box.h = lineHeight(sz)
-            box.baseline = ascent(sz)
-            return box
-        }
-        // 先量所有子节点，取最大 baseline
-        val measured = ArrayList<Pair<MathNode, LayoutBox>>()
-        var maxBaseline = 0f
-        for (n in g.nodes) {
-            val b = measureNode(n, sz)
-            measured.add(n to b)
-            maxBaseline = max(maxBaseline, b.baseline)
-        }
-        var x = 0f
-        var minY = Float.MAX_VALUE
-        var maxY = Float.MIN_VALUE
-        for ((n, b) in measured) {
-            val dy = maxBaseline - b.baseline
-            box.parts.add(Part(n, x, dy, b))
-            x += b.w
-            if (measured.indexOf(n to b) < measured.size - 1) x += 0.06f * sz
-            minY = min(minY, dy)
-            maxY = max(maxY, dy + b.h)
-        }
-        box.w = x
-        box.h = maxY - minY
-        box.baseline = maxBaseline - minY
-        // 调整子节点位置以对齐顶部
-        for (p in box.parts) {
-            p.dy = p.dy - minY
-        }
-        return box
-    }
-
-    private fun measureNode(n: MathNode, sz: Float): LayoutBox {
-        return when (n) {
-            is MathNode.NewLine -> LayoutBox(0f, 0f, 0f, sz) // 换行符：占位 0 宽度
-            is MathNode.Group -> measureGroup(n, sz)
-            is MathNode.Text -> {
-                // 分段测量：中文用宋体、函数名正体、单字母斜体
-                var tw = 0f
-                for (r in textRuns(n.text, sz)) tw += r.width
-                LayoutBox(tw, lineHeight(sz), ascent(sz), sz)
-            }
-            is MathNode.Cmd -> {
-                val disp = CMD_DISPLAY[n.latex] ?: n.latex.trimStart('\\')
-                val paint = if (n.latex in OP_LATEX) opPaint else textPaint
-                val w = measureText(paint, disp, if (n.latex in OP_LATEX) sz * 1.2f else sz)
-                LayoutBox(w, lineHeight(sz), ascent(sz), sz)
-            }
-            is MathNode.Raw -> {
-                val w = measureText(rawPaint, n.latex, sz * 0.85f)
-                LayoutBox(w, lineHeight(sz), ascent(sz), sz)
-            }
-            is MathNode.Fraction -> {
-                val num = measureGroup(n.num, sz)
-                val den = measureGroup(n.den, sz)
-                val gap = 0.14f * sz
-                val barH = max(1.3f * density, 0.07f * sz)
-                val w = max(num.w, den.w) + 0.3f * sz
-                val numY = 0f
-                val barY = num.h + gap
-                val denY = barY + barH + gap
-                val h = denY + den.h
-                // 基线取分数线中心（数学轴），与相邻文字对齐，避免分数整体上移
-                val box = LayoutBox(w, h, barY + barH / 2f, sz)
-                box.parts.add(Part(n.num, (w - num.w) / 2f, numY, num))
-                box.parts.add(Part(n.den, (w - den.w) / 2f, denY, den))
-                box
-            }
-            is MathNode.Sqrt -> {
-                val rad = measureGroup(n.radicand, sz)
-                val deg = n.degree?.let { measureGroup(it, 0.62f * sz) }
-                val overTh = max(1.3f * density, 0.07f * sz)
-                val gapAbove = 0.3f * sz
-                val radicalSize = (rad.h + gapAbove + overTh) * 1.05f
-                val radicalW = measureText(textPaint, "√", radicalSize) * 0.9f
-                val contentX = radicalW + 0.06f * sz
-                val radY = gapAbove + overTh
-                val w = contentX + rad.w
-                val h = radY + rad.h
-                val box = LayoutBox(w, h, radY + rad.baseline, sz)
-                box.parts.add(Part(n.radicand, contentX, radY, rad))
-                if (deg != null) {
-                    box.parts.add(Part(n.degree!!, 0f, -0.15f * deg.h, deg))
-                    // 若 degree 顶出边界，扩展盒高度
-                    if (-0.15f * deg.h < 0) {
-                        val extra = -0.15f * deg.h
-                        box.h = h - extra
-                        box.baseline = (radY + rad.baseline) - extra
-                    }
-                }
-                // 记住绘制信息
-                sqrtDrawData[n] = SqrtDrawData(radicalSize, radicalW, rad.w, gapAbove, overTh, contentX)
-                box
-            }
-            is MathNode.Script -> {
-                val base = measureNode(n.base, sz)
-                val sup = n.sup?.let { measureGroup(it, 0.72f * sz) }
-                val sub = n.sub?.let { measureGroup(it, 0.72f * sz) }
-                val gap = 0.08f * sz
-                val x = base.w + gap
-                var w = x
-                var h = base.h
-                var minY = 0f
-                val box = LayoutBox(0f, 0f, base.baseline, sz)
-                box.parts.add(Part(n.base, 0f, 0f, base))
-                if (sup != null) {
-                    // 上标放在基线之上，不覆盖基元
-                    val dy = base.baseline - sup.h - 0.18f * sz
-                    box.parts.add(Part(n.sup!!, x, dy, sup))
-                    minY = min(minY, dy)
-                    w = max(w, x + sup.w)
-                }
-                if (sub != null) {
-                    // 下标放在基线之下，与上标分开
-                    val dy = base.baseline + 0.18f * sz
-                    box.parts.add(Part(n.sub!!, x, dy, sub))
-                    h = max(h, dy + sub.h)
-                    w = max(w, x + sub.w)
-                }
-                val topShift = min(0f, minY)
-                for (p in box.parts) p.dy -= topShift
-                box.h = h - topShift
-                box.baseline = base.baseline - topShift
-                box.w = w
-                box
-            }
-            is MathNode.Op -> {
-                val isSmall = n.latex in SMALL_OP
-                val symSize = if (isSmall) sz else sz * 1.3f
-                val sym = CMD_DISPLAY[n.latex] ?: n.latex.trimStart('\\')
-                opPaint.textSize = symSize
-                val symW = opPaint.measureText(sym)
-                opPaint.textSize = sz
-                val symFm = opPaint.fontMetrics
-                val symH = symFm.descent - symFm.ascent
-                val symBaseline = -symFm.ascent
-                val under = n.under?.let { measureGroup(it, 0.72f * sz) }
-                val over = n.over?.let { measureGroup(it, 0.72f * sz) }
-                var w = symW
-                var minY = 0f
-                var maxY = symH
-                val box = LayoutBox(0f, 0f, symBaseline, sz)
-                if (over != null) {
-                    val dy = -over.h - 0.1f * sz
-                    box.parts.add(Part(n.over!!, (max(w, over.w) - over.w) / 2f, dy, over))
-                    minY = min(minY, dy)
-                    w = max(w, over.w)
-                }
-                if (under != null) {
-                    val dy = symH + 0.1f * sz
-                    box.parts.add(Part(n.under!!, (max(w, under.w) - under.w) / 2f, dy, under))
-                    maxY = max(maxY, dy + under.h)
-                    w = max(w, under.w)
-                }
-                val topShift = min(0f, minY)
-                for (p in box.parts) p.dy -= topShift
-                box.h = maxY - topShift
-                box.baseline = symBaseline - topShift
-                box.w = w
-                opInfo[n] = OpInfo(sym, symSize, symW, symBaseline - topShift)
-                box
-            }
-            is MathNode.Func -> {
-                val w = measureText(textPaint, n.name, sz * 0.95f)
-                LayoutBox(w, lineHeight(sz), ascent(sz), sz)
-            }
-            is MathNode.Paren -> {
-                val inner = measureGroup(n.inner, sz)
-                val parenH = inner.h + 0.2f * sz
-                val parenW = bracketW(parenH)
-                val gap = 0.07f * sz
-                val w = (if (n.left == ".") 0f else parenW) + (if (n.right == ".") 0f else parenW) + inner.w + gap
-                val dy = (parenH - inner.h) / 2f
-                val box = LayoutBox(w, parenH, dy + inner.baseline, sz)
-                box.parts.add(Part(n.inner, if (n.left == ".") 0f else parenW + gap * 0.5f, dy, inner))
-                parenInfo[n] = ParenInfo(n.left, n.right, parenH)
-                box
-            }
-            is MathNode.Matrix -> {
-                val cellSize = 0.88f * sz
-                val cells = n.rows.map { row -> row.map { measureGroup(it, cellSize) } }
-                val colW = FloatArray(if (n.rows.isEmpty()) 0 else n.rows[0].size) { 0f }
-                // 列宽（Float，避免取整截断导致错位）
-                for (r in cells.indices) for (c in cells[r].indices) {
-                    colW[c] = max(colW[c], cells[r][c].w)
-                }
-                val colGap = 0.42f * sz
-                val rowGap = 0.12f * sz
-                val (lDelim, rDelim) = when (n.delimiter) {
-                    "pmatrix" -> "(" to ")"
-                    "bmatrix" -> "[" to "]"
-                    "vmatrix" -> "|" to "|"
-                    "Bmatrix" -> "{" to "}"
-                    else -> "" to ""
-                }
-                val delimW = if (lDelim.isEmpty()) 0f else 0.75f * sz
-                var w = delimW
-                var h = 0f
-                val box = LayoutBox(0f, 0f, 0f, cellSize)
-                var y = 0f
-                for (r in cells.indices) {
-                    val rowH = (cells[r].maxOfOrNull { it.h } ?: lineHeight(cellSize)) + rowGap
-                    var x = delimW
-                    for (c in cells[r].indices) {
-                        val cell = cells[r][c]
-                        box.parts.add(Part(n.rows[r][c], x, y + (rowH - cell.h) / 2f, cell))
-                        x += colW[c] + colGap
-                    }
-                    w = max(w, x - colGap + delimW)
-                    y += rowH
-                }
-                h = if (cells.isEmpty()) 0f else y - rowGap
-                box.w = w
-                box.h = h
-                box.baseline = h / 2f
-                matrixInfo[n] = MatrixInfo(lDelim, rDelim, h)
-                box
-            }
-            is MathNode.Cases -> {
-                val rows = n.rows.map { measureGroup(it, sz) }
-                val rowGap = 0.14f * sz
-                var w = 0f
-                var h = 0f
-                var y = 0f
-                val box = LayoutBox(0f, 0f, 0f, sz)
-                for (i in rows.indices) {
-                    val b = rows[i]
-                    box.parts.add(Part(n.rows[i], 0.6f * sz, y, b))
-                    w = max(w, b.w)
-                    y += b.h + rowGap
-                }
-                h = y - rowGap
-                box.w = w + 0.6f * sz
-                box.h = h
-                box.baseline = rows.firstOrNull()?.baseline ?: ascent(sz)
-                casesInfo[n] = CasesInfo(h)
-                box
-            }
-            is MathNode.Accent -> {
-                val base = measureGroup(n.base, sz)
-                val accentH = 0.75f * sz // 加大，让 hat/点 等装饰符号字符能完整放下
-                val w = base.w + 0.05f * sz
-                val box = LayoutBox(w, base.h + accentH, accentH + base.baseline, sz)
-                box.parts.add(Part(n.base, 0f, accentH, base))
-                accentInfo[n] = AccentInfo(n.accent, accentH, base.w)
-                box
-            }
-            is MathNode.Chem -> {
-                val w = measureText(textPaint, n.text, sz * 0.92f)
-                LayoutBox(w, lineHeight(sz), ascent(sz), sz)
-            }
-        }
-    }
-
-    // 绘制辅助数据
-    private class SqrtDrawData(val radicalSize: Float, val radicalW: Float, val contentW: Float, val gapAbove: Float, val overTh: Float, val contentX: Float)
-    private class OpInfo(val sym: String, val size: Float, val w: Float, val baseline: Float)
-    private class ParenInfo(val left: String, val right: String, val h: Float)
-    private class MatrixInfo(val left: String, val right: String, val h: Float)
-    private class CasesInfo(val h: Float)
-    private class AccentInfo(val accent: String, val accentH: Float, val baseW: Float)
-
-    private val sqrtDrawData = HashMap<MathNode.Sqrt, SqrtDrawData>()
-    private val opInfo = HashMap<MathNode.Op, OpInfo>()
-    private val parenInfo = HashMap<MathNode.Paren, ParenInfo>()
-    private val matrixInfo = HashMap<MathNode.Matrix, MatrixInfo>()
-    private val casesInfo = HashMap<MathNode.Cases, CasesInfo>()
-    private val accentInfo = HashMap<MathNode.Accent, AccentInfo>()
+    // 排版缓存由 core 的排版引擎持有，这里转发，绘制/命中测试代码不用改
+    private val multilineLines get() = layoutEngine.multilineLines
+    private val multilineRowNodes get() = layoutEngine.multilineRowNodes
+    private val groupBoxes get() = layoutEngine.groupBoxes
+    private val sqrtDrawData get() = layoutEngine.sqrtInfo
+    private val opInfo get() = layoutEngine.opInfo
+    private val parenInfo get() = layoutEngine.parenInfo
+    private val matrixInfo get() = layoutEngine.matrixInfo
+    private val casesInfo get() = layoutEngine.casesInfo
+    private val accentInfo get() = layoutEngine.accentInfo
 
     // ---------- 绘制 ----------
 
@@ -933,13 +520,13 @@ class FormulaEditorView @JvmOverloads constructor(
             is MathNode.Paren -> {
                 val info = parenInfo[n] ?: return
                 drawBracket(canvas, info.left, x, y, info.h)
-                drawBracket(canvas, info.right, x + box.w - bracketW(info.h), y, info.h)
+                drawBracket(canvas, info.right, x + box.w - bracketWidth(info.h, density), y, info.h)
             }
             is MathNode.Matrix -> {
                 val info = matrixInfo[n] ?: return
                 if (info.left.isNotEmpty()) {
                     drawBracket(canvas, info.left, x, y, info.h)
-                    drawBracket(canvas, info.right, x + box.w - bracketW(info.h), y, info.h)
+                    drawBracket(canvas, info.right, x + box.w - bracketWidth(info.h, density), y, info.h)
                 }
             }
             is MathNode.Cases -> {
@@ -1010,7 +597,7 @@ class FormulaEditorView @JvmOverloads constructor(
             is MathNode.Text -> {
                 // 分段绘制：中文宋体、函数名正体、变量斜体
                 var cx = x
-                for (r in textRuns(n.text, box.sz)) {
+                for (r in drawRuns(n.text, box.sz)) {
                     r.paint.textSize = box.sz
                     canvas.drawText(r.text, cx, y + box.baseline, r.paint.textStyle())
                     cx += r.width
@@ -1077,7 +664,7 @@ class FormulaEditorView @JvmOverloads constructor(
     private fun prefixWidth(text: String, sz: Float, k: Int): Float {
         var w = 0f
         var cnt = 0
-        for (r in textRuns(text, sz)) {
+        for (r in drawRuns(text, sz)) {
             val take = min(k - cnt, r.text.length)
             if (take <= 0) break
             w += measureText(r.paint, r.text.substring(0, take), sz)
@@ -1187,8 +774,10 @@ class FormulaEditorView @JvmOverloads constructor(
         }
         // 结构节点（分数/根号/矩阵…）→ 进入最近的子容器（分子/分母/单元格…）
         if (best != null) {
-            return hitTestBox(best.node, best.box, px - best.dx, py - best.dy)
-                ?: (if (best.node is MathNode.Group) groupIndexAt(best.node, px - best.dx) else null)
+            // 局部拷贝一份：core 的 Part.node 是跨模块属性，不能直接 smart cast
+            val bestNode = best.node
+            return hitTestBox(bestNode, best.box, px - best.dx, py - best.dy)
+                ?: (if (bestNode is MathNode.Group) groupIndexAt(bestNode, px - best.dx) else null)
         }
         return null
     }
@@ -1217,7 +806,7 @@ class FormulaEditorView @JvmOverloads constructor(
                 val nodeText = (node as? MathNode.Text)?.text ?: (node as MathNode.Chem).text
                 var cx = x
                 var cnt = 0 // 前 cnt 个字符已过的候选 cursorChar
-                for (r in textRuns(nodeText, p.box.sz)) {
+                for (r in drawRuns(nodeText, p.box.sz)) {
                     for (c in r.text) {
                         cnt++
                         cx += measureText(r.paint, c.toString(), p.box.sz)
