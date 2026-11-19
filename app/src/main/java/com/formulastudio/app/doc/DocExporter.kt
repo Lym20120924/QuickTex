@@ -1,6 +1,8 @@
 package com.formulastudio.app.doc
 
 import com.formulastudio.app.R
+import com.formulastudio.core.model.DocBlock
+import com.formulastudio.core.model.TextStyle
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -242,4 +244,178 @@ object DocExporter {
 
     private fun esc(s: String): String =
         s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+    // ==================== 新增：DocBlock → docx（带段落样式，A5） ====================
+
+    /** 把 [DocBlock] 列表导出为 Word 文档，保留文字样式、表格、图片（资源来自 [images]）。 */
+    fun toDocxFromBlocks(
+        context: Context,
+        blocks: List<DocBlock>,
+        images: Map<String, ByteArray> = emptyMap()
+    ): File? {
+        return try {
+            val body = StringBuilder()
+            val rels = StringBuilder()
+            val media = mutableMapOf<String, ByteArray>()
+            var imgIdx = 0
+
+            for (block in blocks) {
+                when (block) {
+                    is DocBlock.Text -> {
+                        body.append("<w:p>")
+                        body.append("<w:pPr>")
+                        // 对齐
+                        body.append("<w:jc w:val=\"${styleAlignment(block.style)}\"/>")
+                        // 段落级默认运行属性
+                        body.append("<w:rPr>")
+                        body.append(runPropsXml(block.style))
+                        body.append("</w:rPr>")
+                        body.append("</w:pPr>")
+                        for (line in block.text.split("\n")) {
+                            if (line.isBlank()) continue
+                            body.append("<w:r><w:t xml:space=\"preserve\">")
+                                .append(esc(line)).append("</w:t></w:r>")
+                        }
+                        body.append("</w:p>\n")
+                    }
+                    is DocBlock.Math -> {
+                        val omml = com.formulastudio.core.export.Omml.convert(block.latex)
+                        if (omml != null) {
+                            body.append("<w:p><m:oMath>")
+                                .append(omml).append("</m:oMath></w:p>\n")
+                        } else {
+                            // 回退：公式作为图片嵌入
+                            val bmp = BlockRenderer.mathBitmap(context, block.latex, !block.display)
+                            if (bmp != null) {
+                                imgIdx++
+                                val name = "image$imgIdx.png"
+                                media[name] = bitmapToPngBytes(bmp)
+                                val cx = Math.round(bmp.width / 96.0 * 914400)
+                                val cy = Math.round(bmp.height / 96.0 * 914400)
+                                rels.append(imageRel(imgIdx, name))
+                                body.append(imageDrawing(imgIdx, name, cx, cy))
+                            }
+                        }
+                    }
+                    is DocBlock.Table -> {
+                        body.append("<w:tbl><w:tblPr><w:tblW w:type=\"dxa\" w:val=\"9000\"/></w:tblPr>")
+                        for (row in block.rows) {
+                            body.append("<w:tr>")
+                            for (cell in row) {
+                                body.append("<w:tc><w:p><w:r><w:t xml:space=\"preserve\">")
+                                    .append(esc(cell)).append("</w:t></w:r></w:p></w:tc>")
+                            }
+                            body.append("</w:tr>")
+                        }
+                        body.append("</w:tbl>\n")
+                    }
+                    is DocBlock.Figure -> { } // 图形暂不导出
+                    is DocBlock.Image -> {
+                        val data = images[block.src] ?: continue
+                        val bmp = android.graphics.BitmapFactory.decodeByteArray(data, 0, data.size) ?: continue
+                        imgIdx++
+                        val name = "image$imgIdx.png"
+                        media[name] = data
+                        val cx = Math.round(block.width.coerceAtLeast(0f) / 72f * 914400).toLong()
+                        val cy = Math.round(block.height.coerceAtLeast(0f) / 72f * 914400).toLong()
+                        rels.append(imageRel(imgIdx, name))
+                        body.append(imageDrawing(imgIdx, name, cx, cy))
+                        body.append("\n")
+                    }
+                }
+            }
+
+            val documentXml = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n" +
+                "<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\" " +
+                "xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" " +
+                "xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\" " +
+                "xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" " +
+                "xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\" " +
+                "xmlns:m=\"http://schemas.openxmlformats.org/officeDocument/2006/math\">" +
+                "<w:body>\n" + body + "</w:body></w:document>"
+
+            val relsXml = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n" +
+                "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">\n" +
+                "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"word/document.xml\"/>\n" +
+                rels +
+                "</Relationships>"
+
+            val f = File(File(context.cacheDir, "shared").apply { mkdirs() },
+                "document_${System.currentTimeMillis()}.docx")
+            ZipOutputStream(FileOutputStream(f)).use { z ->
+                fun entry(name: String, data: ByteArray) {
+                    z.putNextEntry(ZipEntry(name)); z.write(data); z.closeEntry()
+                }
+                entry("[Content_Types].xml", """
+                    <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                    <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+                    <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+                    <Default Extension="xml" ContentType="application/xml"/>
+                    <Default Extension="png" ContentType="image/png"/>
+                    <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+                    </Types>""".trim().toByteArray())
+                entry("_rels/.rels", """
+                    <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                    <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+                    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+                    </Relationships>""".trim().toByteArray())
+                entry("word/document.xml", documentXml.toByteArray())
+                entry("word/_rels/document.xml.rels", relsXml.toByteArray())
+                for ((name, data) in media) {
+                    entry("word/media/$name", data)
+                }
+            }
+            f
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun runPropsXml(style: TextStyle): String {
+        val sb = StringBuilder()
+        sb.append("<w:rFonts w:ascii=\"${fontName(style)}\" w:hAnsi=\"${fontName(style)}\" w:cs=\"${fontName(style)}\"/>")
+        sb.append("<w:sz w:val=\"${(style.fontSize * 2).toInt()}\"/>")
+        sb.append("<w:color w:val=\"${colorHex(style.color)}\"/>")
+        if (style.bold) sb.append("<w:b/>")
+        if (style.italic) sb.append("<w:i/>")
+        return sb.toString()
+    }
+
+    private fun fontName(style: TextStyle): String = when (style.fontFamily) {
+        "sans" -> "Arial"
+        "mono" -> "Courier New"
+        "cjk" -> "SimSun"
+        else -> "Times New Roman"
+    }
+
+    private fun colorHex(color: Int): String = "%06X".format(color and 0xFFFFFF)
+
+    private fun styleAlignment(style: TextStyle): String = when (style.alignment) {
+        "center" -> "center"
+        "right" -> "right"
+        "justify" -> "both"
+        else -> "left"
+    }
+
+    private fun imageRel(idx: Int, name: String): String =
+        "<Relationship Id=\"rIdImg$idx\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"media/$name\"/>\n"
+
+    private fun imageDrawing(idx: Int, name: String, cx: Long, cy: Long): String =
+        "<w:p><w:r><w:drawing><wp:inline distT=\"0\" distB=\"0\" distL=\"0\" distR=\"0\">" +
+            "<wp:extent cx=\"$cx\" cy=\"$cy\"/>" +
+            "<wp:docPr id=\"$idx\" name=\"Formula\"/>" +
+            "<a:graphic xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\">" +
+            "<a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/picture\">" +
+            "<pic:pic xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\">" +
+            "<pic:nvPicPr><pic:cNvPr id=\"$idx\" name=\"$name\"/><pic:cNvPicPr/></pic:nvPicPr>" +
+            "<pic:blipFill><a:blip r:embed=\"rIdImg$idx\"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>" +
+            "<pic:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"$cx\" cy=\"$cy\"/></a:xfrm>" +
+            "<a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom></pic:spPr>" +
+            "</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>\n"
+
+    private fun bitmapToPngBytes(bmp: Bitmap): ByteArray {
+        val bos = ByteArrayOutputStream()
+        bmp.compress(Bitmap.CompressFormat.PNG, 100, bos)
+        return bos.toByteArray()
+    }
 }

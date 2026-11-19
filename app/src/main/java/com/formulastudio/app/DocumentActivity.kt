@@ -58,6 +58,8 @@ import com.formulastudio.app.doc.LatexDocument
 import com.formulastudio.app.pdf.PdfViewerActivity
 import com.formulastudio.app.ui.theme.QuickTexTheme
 import com.formulastudio.app.util.Prefs
+import com.formulastudio.core.doc.DocxReader
+import com.formulastudio.core.model.DocBlock
 import java.io.File
 
 /**
@@ -92,19 +94,50 @@ private fun DocumentScreen(initial: String, onClose: () -> Unit) {
     var source by remember { mutableStateOf(initial) }
     var items by remember { mutableStateOf<List<DocumentActivity.Item>>(emptyList()) }
     var mathLatex by remember { mutableStateOf<List<String>>(emptyList()) }
+    /** docx 导入后的原始块（用于带样式导出，实现双向闭环） */
+    var docBlocks by remember { mutableStateOf<List<DocBlock>>(emptyList()) }
+    /** docx 导入的图片资源：文件名 → 字节 */
+    var docImages by remember { mutableStateOf<Map<String, ByteArray>>(emptyMap()) }
     var busy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("") }
     var showExport by remember { mutableStateOf(false) }
-    /** 打开 docx 查看器 */
-    fun openDocx(uri: android.net.Uri) {
-        ctx.startActivity(Intent(ctx, com.formulastudio.app.docx.DocxViewerActivity::class.java)
-            .setData(uri)
-            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+
+    /** 从 docx uri 导入：读取字节 → DocxReader 解析 → DocBlock → 按样式渲染 → 显示 */
+    fun importDocx(uri: android.net.Uri) {
+        busy = true
+        toast(R.string.document_rendering)
+        Thread {
+            val bytes = ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: return@Thread
+            val result = DocxReader.parse(bytes) ?: return@Thread
+            docBlocks = DocxReader.toDocBlocks(result)
+            docImages = result.images
+            // 按样式渲染成位图，包装为 Item 显示
+            val rendered = ArrayList<DocumentActivity.Item>()
+            val latex = ArrayList<String>()
+            for ((block, bmp) in BlockRenderer.renderBlocksToBitmaps(ctx, docBlocks, docImages)) {
+                when (block) {
+                    is DocBlock.Text -> rendered.add(DocumentActivity.Item(true, block.text, null))
+                    is DocBlock.Math -> {
+                        latex.add(block.latex)
+                        rendered.add(DocumentActivity.Item(false, block.latex, bmp))
+                    }
+                    is DocBlock.Figure -> rendered.add(DocumentActivity.Item(false, block.source, bmp))
+                    is DocBlock.Table -> rendered.add(DocumentActivity.Item(false, block.rows.joinToString { it.joinToString(" | ") }, bmp))
+                    is DocBlock.Image -> rendered.add(DocumentActivity.Item(false, block.src, bmp))
+                }
+            }
+            items = rendered
+            mathLatex = latex
+            source = "" // 导入 docx 后清空 LaTeX 源码框
+            status = ctx.getString(R.string.document_math_count, latex.size,
+                rendered.count { !it.isText }) + " (来自 docx 导入)"
+            busy = false
+        }.start()
     }
 
     val importLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
-    ) { u -> if (u != null) openDocx(u) }
+    ) { u -> if (u != null) importDocx(u) }
 
     /** 渲染：解析放后台，位图必须在主线程创建 */
     fun render() {
@@ -354,7 +387,14 @@ private fun DocumentScreen(initial: String, onClose: () -> Unit) {
     if (showExport) {
         val opts = listOf(
             R.string.document_export_pdf to { export({ DocExporter.toPdf(ctx, items) }, ".pdf", "application/pdf", R.string.document_export) },
-            R.string.document_export_docx to { export({ DocExporter.toDocx(ctx, items) }, ".docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", R.string.document_export) },
+            R.string.document_export_docx to {
+                val block = if (docBlocks.isNotEmpty()) {
+                    { DocExporter.toDocxFromBlocks(ctx, docBlocks, docImages) }
+                } else {
+                    { DocExporter.toDocx(ctx, items) }
+                }
+                export(block, ".docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", R.string.document_export)
+            },
             R.string.document_export_xlsx to { export({ DocExporter.toXlsx(ctx, items) }, ".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", R.string.document_export) },
             R.string.document_export_md to { export({ DocExporter.toMarkdown(ctx, items) }, ".md", "text/markdown", R.string.document_export) },
             R.string.document_export_svg to { showExport = false; exportSvg() },
