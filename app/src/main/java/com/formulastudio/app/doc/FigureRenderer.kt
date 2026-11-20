@@ -56,17 +56,20 @@ object FigureRenderer {
             val closed: Boolean,
             val color: Int,
             val width: Float,
-            val dashed: Boolean
+            val dashed: Boolean,
+            val fill: Int? = null
         ) : Op()
 
         data class Circle(
             val c: Pair<Float, Float>, val r: Float,
-            val color: Int, val width: Float, val dashed: Boolean
+            val color: Int, val width: Float, val dashed: Boolean,
+            val fill: Int? = null
         ) : Op()
 
         data class Rect(
             val x: Float, val y: Float, val w: Float, val h: Float,
-            val color: Int, val width: Float, val dashed: Boolean
+            val color: Int, val width: Float, val dashed: Boolean,
+            val fill: Int? = null
         ) : Op()
 
         data class Text(
@@ -276,7 +279,7 @@ object FigureRenderer {
             pts.add(p)
         }
         if (pts.size >= 2) {
-            ctx.ops.add(Op.Poly(pts, closed, ctx.stroke, ctx.width, ctx.dashed))
+            ctx.ops.add(Op.Poly(pts, closed, ctx.stroke, ctx.width, ctx.dashed, ctx.fill))
         }
     }
 
@@ -547,7 +550,7 @@ object FigureRenderer {
                     else ops.add(PathOp.LineTo(p.first, p.second))
                 }
                 if (op.closed) ops.add(PathOp.LineTo(op.pts[0].first, op.pts[0].second))
-                out.drawPath(ops, Ink(op.color, op.width, false, op.dashed))
+                out.drawPath(ops, Ink(op.color, op.width, op.fill != null, op.dashed))
             }
             is Op.Circle -> {
                 val ops = ArrayList<PathOp>()
@@ -556,7 +559,7 @@ object FigureRenderer {
                 ops.add(PathOp.CubicTo(op.c.first - op.r * 0.55f, op.c.second + op.r, op.c.first - op.r, op.c.second + op.r * 0.55f, op.c.first - op.r, op.c.second))
                 ops.add(PathOp.CubicTo(op.c.first - op.r, op.c.second - op.r * 0.55f, op.c.first - op.r * 0.55f, op.c.second - op.r, op.c.first, op.c.second - op.r))
                 ops.add(PathOp.CubicTo(op.c.first + op.r * 0.55f, op.c.second - op.r, op.c.first + op.r, op.c.second - op.r * 0.55f, op.c.first + op.r, op.c.second))
-                out.drawPath(ops, Ink(op.color, op.width, false, op.dashed))
+                out.drawPath(ops, Ink(op.color, op.width, op.fill != null, op.dashed))
             }
             is Op.Rect -> {
                 val ops = listOf(
@@ -564,7 +567,7 @@ object FigureRenderer {
                     PathOp.LineTo(op.x + op.w, op.y + op.h), PathOp.LineTo(op.x, op.y + op.h),
                     PathOp.LineTo(op.x, op.y)
                 )
-                out.drawPath(ops, Ink(op.color, op.width, false, op.dashed))
+                out.drawPath(ops, Ink(op.color, op.width, op.fill != null, op.dashed))
             }
             is Op.Text -> {
                 textPaint.color = op.color
